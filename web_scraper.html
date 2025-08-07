@@ -1,0 +1,2168 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Web Scraper - Artigos e Perfis LinkedIn</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .card {
+            transition: transform 0.2s;
+        }
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+        }
+        .filter-section {
+            border: 1px solid #e5e7eb;
+            border-radius: 0.5rem;
+            padding: 1rem;
+            margin-bottom: 1rem;
+        }
+        .filter-title {
+            cursor: pointer;
+            font-weight: bold;
+            color: #3B82F6;
+        }
+        .filter-content {
+            display: none;
+        }
+        .filter-content.active {
+            display: block;
+        }
+        .tab {
+            cursor: pointer;
+            padding: 1rem;
+            border: 1px solid transparent;
+            border-bottom: none;
+            transition: background-color 0.2s;
+        }
+        .tab.active {
+            background-color: #fff;
+            border-color: #e5e7eb;
+            border-bottom: 1px solid transparent;
+            font-weight: bold;
+            color: #3B82F6;
+        }
+        .tab:hover {
+            background-color: #f3f4f6;
+        }
+        .tab-container {
+            display: flex;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        .tab-content {
+            display: none;
+            transition: opacity 0.3s ease;
+        }
+        .tab-content.active {
+            display: block;
+            opacity: 1;
+        }
+        .badge {
+            background-color: #3B82F6;
+            color: white;
+            padding: 0.2rem 0.5rem;
+            border-radius: 0.25rem;
+            font-size: 0.75rem;
+            margin-left: 0.5rem;
+        }
+        .error-message {
+            background-color: #FEF2F2;
+            border: 1px solid #FECACA;
+            color: #DC2626;
+            padding: 0.75rem;
+            border-radius: 0.5rem;
+            margin-top: 0.5rem;
+            font-size: 0.875rem;
+            display: flex;
+            align-items: center;
+        }
+        .error-message i {
+            margin-right: 0.5rem;
+            color: #DC2626;
+        }
+        .field-error {
+            border-color: #DC2626 !important;
+            box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.1) !important;
+        }
+        .success-message {
+            background-color: #F0FDF4;
+            border: 1px solid #BBF7D0;
+            color: #16A34A;
+            padding: 0.75rem;
+            border-radius: 0.5rem;
+            margin-top: 0.5rem;
+            font-size: 0.875rem;
+            display: flex;
+            align-items: center;
+        }
+        .success-message i {
+            margin-right: 0.5rem;
+            color: #16A34A;
+        }
+        optgroup {
+            border-top: 1px solid #e5e7eb;
+            padding: 0.25rem 0;
+        }
+        optgroup option {
+            padding: 0.5rem 0;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <div class="container mx-auto px-4 py-8">
+        <header class="mb-12 text-center">
+            <h1 class="text-4xl font-bold text-blue-600 mb-2">
+                <i class="fas fa-search mr-2"></i>Web Scraper
+            </h1>
+            <p class="text-gray-600">Use as abas acima para alternar entre buscas de artigos acadêmicos e perfis do LinkedIn</p>
+        </header>
+
+        <div class="tab-container mb-6">
+            <div id="academic-tab" class="tab active" role="tab" aria-selected="true" tabindex="0" onclick="switchTab('academic')">Artigos Acadêmicos</div>
+            <div id="linkedin-tab" class="tab" role="tab" aria-selected="false" tabindex="0" onclick="switchTab('linkedin')">Perfis LinkedIn</div>
+            <div id="linkedin-apify-tab" class="tab" role="tab" aria-selected="false" tabindex="0" onclick="switchTab('linkedin-apify')">Perfis LinkedIn Apify</div>
+        </div>
+
+        <div id="academic-content" class="tab-content active" role="tabpanel" aria-labelledby="academic-tab">
+            <div class="bg-white rounded-xl shadow-md p-6">
+                <h2 class="text-xl font-semibold mb-4 text-gray-800">Busque artigos acadêmicos</h2>
+                
+                <!-- Filtros Primários -->
+                <div class="mb-6">
+                    <h3 class="font-semibold text-lg text-gray-700 mb-2">Filtros Primários</h3>
+                    <div class="mb-4">
+                        <input type="text" id="academic-keywords" 
+                            class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500" 
+                            placeholder="Palavras-chave (obrigatório)">
+                    </div>
+                    <div class="mb-4">
+                        <label for="publication-year" class="block text-sm font-medium text-gray-700 mb-1">Ano de publicação</label>
+                        <select id="publication-year" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
+                            <option value="">Selecione um intervalo...</option>
+                            <option value="2015-2025">2015–2025</option>
+                            <option value="2010-2015">2010–2015</option>
+                            <option value="2000-2010">2000–2010</option>
+                        </select>
+                    </div>
+                    <div class="mb-4">
+                        <label for="data-source" class="block text-sm font-medium text-gray-700 mb-1">Fontes de dados</label>
+                        <select id="data-source" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
+                            <option value="">Selecione as fontes...</option>
+                            <option value="google-scholar">Google Scholar</option>
+                            <option value="arxiv">arXiv</option>
+                            <option value="scielo">SciELO</option>
+                            <option value="dblp">DBLP Computer Science Bibliography</option>
+                        </select>
+                        <p class="text-xs text-green-600 mt-1">
+                            <i class="fas fa-info-circle mr-1"></i>
+                            Apenas bases de dados de acesso gratuito são suportadas. Fontes pagas como ACM, IEEE e Web of Science foram removidas.
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Filtros Secundários -->
+                <div class="filter-section">
+                    <div class="filter-title" onclick="toggleFilter('secondary-filters')">Filtros Secundários <i class="fas fa-chevron-down"></i></div>
+                    <div id="secondary-filters" class="filter-content">
+                        <div class="mb-4">
+                            <label for="authors" class="block text-sm font-medium text-gray-700 mb-1">Autores</label>
+                            <input type="text" id="authors" 
+                                class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500" 
+                                placeholder="Digite nomes de autores (autocomplete, múltiplos)">
+                        </div>
+                        <div class="mb-4">
+                            <label for="language" class="block text-sm font-medium text-gray-700 mb-1">Idioma do artigo</label>
+                            <select id="language" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
+                                <option value="">Selecione...</option>
+                                <option value="portuguese">Português</option>
+                                <option value="english">Inglês</option>
+                                <option value="spanish">Espanhol</option>
+                            </select>
+                        </div>
+                        <div class="mb-4">
+                            <label for="knowledge-area" class="block text-sm font-medium text-gray-700 mb-1">Área do conhecimento</label>
+                            <select id="knowledge-area" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
+                                <option value="">Selecione...</option>
+                                <option value="computing">Computação</option>
+                                <option value="engineering">Engenharia</option>
+                                <option value="health">Saúde</option>
+                            </select>
+                        </div>
+                        <div class="mb-4">
+                            <label for="affiliated-institution" class="block text-sm font-medium text-gray-700 mb-1">Instituição afiliada</label>
+                            <input type="text" id="affiliated-institution" 
+                                class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500" 
+                                placeholder="Ex: USP, UNICAMP (autocomplete)">
+                        </div>
+                        <div class="mb-4">
+                            <label for="author-country" class="block text-sm font-medium text-gray-700 mb-1">País do autor</label>
+                            <select id="author-country" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
+                                <option value="">Selecione...</option>
+                                <option value="brazil">Brasil</option>
+                                <option value="usa">Estados Unidos</option>
+                                <option value="germany">Alemanha</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="academic-error-container"></div>
+                <button id="search-academic" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg transition" onclick="searchAcademicArticles()">
+                    Buscar Artigos
+                </button>
+                <div id="academic-list" class="mt-6 space-y-4">
+                    <!-- Resultados simulados - apenas fontes gratuitas -->
+                    <div class="card p-4 border border-gray-200 rounded-lg">
+                        <h4 class="font-medium text-blue-600">Hyperledger Besu: An Enterprise Ethereum Client <span class="badge">Acesso Gratuito</span></h4>
+                        <p class="text-sm text-gray-500">Autores: John Doe, Jane Smith</p>
+                        <p class="text-sm text-gray-500">Ano: 2022 | Fonte: <span class="text-green-600 font-medium">arXiv</span></p>
+                        <p class="text-gray-700 mt-2">An in-depth analysis of Hyperledger Besu architecture and its applications in private blockchain networks...</p>
+                    </div>
+                    <div class="card p-4 border border-gray-200 rounded-lg">
+                        <h4 class="font-medium text-blue-600">Enterprise Blockchain Adoption Patterns</h4>
+                        <p class="text-sm text-gray-500">Autores: Alice Johnson, Bob Brown</p>
+                        <p class="text-sm text-gray-500">Ano: 2023 | Fonte: <span class="text-green-600 font-medium">Google Scholar</span></p>
+                        <p class="text-gray-700 mt-2">Comparative study of blockchain adoption across different industries with case studies...</p>
+                    </div>
+                    <div class="card p-4 border border-gray-200 rounded-lg">
+                        <h4 class="font-medium text-blue-600">Análise de Algoritmos de Machine Learning em Saúde Pública</h4>
+                        <p class="text-sm text-gray-500">Autores: Maria Silva, Carlos Santos</p>
+                        <p class="text-sm text-gray-500">Ano: 2023 | Fonte: <span class="text-green-600 font-medium">SciELO</span></p>
+                        <p class="text-gray-700 mt-2">Estudo comparativo de algoritmos de aprendizado de máquina aplicados em dados de saúde pública brasileira...</p>
+                    </div>
+                    <div class="card p-4 border border-gray-200 rounded-lg">
+                        <h4 class="font-medium text-blue-600">Distributed Systems and Consensus Algorithms</h4>
+                        <p class="text-sm text-gray-500">Autores: Robert Johnson, Lisa Chen</p>
+                        <p class="text-sm text-gray-500">Ano: 2022 | Fonte: <span class="text-green-600 font-medium">DBLP</span></p>
+                        <p class="text-gray-700 mt-2">Comprehensive survey of consensus algorithms in distributed computing systems with performance analysis...</p>
+                    </div>
+                    <div id="no-academic-results" class="hidden text-gray-500 mt-4">Nenhum artigo encontrado para esses termos.</div>
+                </div>
+            </div>
+        </div>
+
+        <div id="linkedin-content" class="tab-content" role="tabpanel" aria-labelledby="linkedin-tab">
+            <div class="bg-white rounded-xl shadow-md p-6">
+                <h2 class="text-2xl font-bold mb-6 text-gray-800 text-center">
+                    <i class="fab fa-linkedin mr-2 text-blue-600"></i>
+                    Encontre profissionais no LinkedIn
+                </h2>
+                
+                <!-- Filtros Primários -->
+                <div class="mb-6 bg-blue-50 border-l-4 border-blue-500 p-4 rounded-r-lg">
+                    <h3 class="font-semibold text-lg text-blue-700 mb-4 flex items-center">
+                        <i class="fas fa-filter mr-2"></i>Filtros Primários
+                    </h3>
+                    <div class="grid md:grid-cols-2 gap-4">
+                        <div>
+                            <label for="linkedin-keywords" class="block text-sm font-medium text-gray-700 mb-2">Palavras-chave</label>
+                            <input type="text" id="linkedin-keywords" 
+                                class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all" 
+                                placeholder="Ex: blockchain developer"
+                                aria-describedby="keywords-help">
+                            <p id="keywords-help" class="text-xs text-gray-500 mt-1">Digite habilidades, cargos ou tecnologias</p>
+                        </div>
+                        <div>
+                            <label for="linkedin-location" class="block text-sm font-medium text-gray-700 mb-2">Localização</label>
+                            <input type="text" id="linkedin-location" 
+                                class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all" 
+                                placeholder="Ex: Brasil, LatAm"
+                                aria-describedby="location-help">
+                            <p id="location-help" class="text-xs text-gray-500 mt-1">País, região ou cidade</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Filtros Secundários -->
+                <div class="filter-section bg-gray-50 border border-gray-200">
+                    <div class="filter-title flex items-center justify-between p-4 bg-gray-100 rounded-t-lg" 
+                         onclick="toggleLinkedinFilter('linkedin-secondary-filters')" 
+                         role="button" 
+                         tabindex="0" 
+                         aria-expanded="false"
+                         onkeypress="if(event.key==='Enter') toggleLinkedinFilter('linkedin-secondary-filters')">
+                        <span class="flex items-center">
+                            <i class="fas fa-sliders-h mr-2 text-gray-600"></i>
+                            <span class="font-semibold text-gray-700">Filtros Secundários</span>
+                        </span>
+                        <i id="linkedin-secondary-filters-icon" class="fas fa-chevron-down text-gray-500 transition-transform"></i>
+                    </div>
+                    <div id="linkedin-secondary-filters" class="filter-content p-4">
+                        <div class="grid md:grid-cols-2 gap-6">
+                            <!-- Empresa -->
+                            <div>
+                                <label for="company" class="block text-sm font-medium text-gray-700 mb-2">Empresa</label>
+                                <input type="text" id="company" 
+                                    class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" 
+                                    placeholder="Ex: Google, Microsoft, Nubank">
+                            </div>
+
+                            <!-- Setor -->
+                            <div>
+                                <label for="industry" class="block text-sm font-medium text-gray-700 mb-2">Setor</label>
+                                <select id="industry" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                    <option value="">Todos os setores</option>
+                                    <option value="technology">Tecnologia</option>
+                                    <option value="finance">Financeiro</option>
+                                    <option value="healthcare">Saúde</option>
+                                    <option value="education">Educação</option>
+                                    <option value="consulting">Consultoria</option>
+                                    <option value="retail">Varejo</option>
+                                    <option value="manufacturing">Manufatura</option>
+                                </select>
+                            </div>
+
+                            <!-- Nível de experiência -->
+                            <div>
+                                <label for="linkedin-seniority" class="block text-sm font-medium text-gray-700 mb-2">Nível de experiência</label>
+                                <select id="linkedin-seniority" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                    <option value="">Todos os níveis</option>
+                                    <option value="internship">Estagiário</option>
+                                    <option value="entry">Júnior</option>
+                                    <option value="associate">Pleno</option>
+                                    <option value="mid-senior">Sênior</option>
+                                    <option value="director">Diretor</option>
+                                    <option value="executive">Executivo</option>
+                                </select>
+                            </div>
+
+                            <!-- Função -->
+                            <div>
+                                <label for="linkedin-function" class="block text-sm font-medium text-gray-700 mb-2">Função</label>
+                                <select id="linkedin-function" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                    <option value="">Todas as funções</option>
+                                    <option value="engineering">Engenharia</option>
+                                    <option value="sales">Vendas</option>
+                                    <option value="marketing">Marketing</option>
+                                    <option value="operations">Operações</option>
+                                    <option value="finance">Finanças</option>
+                                    <option value="hr">Recursos Humanos</option>
+                                    <option value="consulting">Consultoria</option>
+                                </select>
+                            </div>
+
+                            <!-- Certificações -->
+                            <div>
+                                <label for="certifications" class="block text-sm font-medium text-gray-700 mb-2">Certificações</label>
+                                <input type="text" id="certifications" 
+                                    class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" 
+                                    placeholder="Ex: AWS, PMP, Scrum Master (separados por vírgula)">
+                            </div>
+
+                            <!-- Escola -->
+                            <div>
+                                <label for="linkedin-school" class="block text-sm font-medium text-gray-700 mb-2">Escola/Universidade</label>
+                                <input type="text" id="linkedin-school" 
+                                    class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" 
+                                    placeholder="Ex: USP, MIT, Stanford">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Error container for LinkedIn -->
+                <div id="linkedin-error-container"></div>
+                
+                <!-- Botões de ação -->
+                <div class="flex gap-4 mt-6">
+                    <button id="clear-linkedin-filters" 
+                            class="flex-1 bg-gray-500 hover:bg-gray-600 text-white py-3 px-6 rounded-lg transition-all font-medium flex items-center justify-center"
+                            onclick="clearLinkedinFilters()">
+                        <i class="fas fa-eraser mr-2"></i>
+                        Limpar Filtros
+                    </button>
+                    <button id="search-linkedin" 
+                            class="flex-2 bg-blue-600 hover:bg-blue-700 text-white py-3 px-6 rounded-lg transition-all font-medium flex items-center justify-center"
+                            onclick="searchLinkedinProfiles()">
+                        <i class="fas fa-search mr-2"></i>
+                        Buscar Perfis
+                        <span id="search-loading" class="hidden ml-2">
+                            <i class="fas fa-spinner fa-spin"></i>
+                        </span>
+                    </button>
+                </div>
+
+                <!-- Sistema de Scoring Inteligente -->
+                <div class="mt-6 bg-blue-50 border-l-4 border-blue-500 p-4 rounded-r-lg">
+                    <div class="flex items-start">
+                        <div class="flex-shrink-0">
+                            <i class="fas fa-info-circle text-blue-500 text-lg"></i>
+                        </div>
+                        <div class="ml-3">
+                            <h3 class="text-sm font-medium text-blue-800">Sistema de Scoring Inteligente</h3>
+                            <div class="mt-2 text-sm text-blue-700">
+                                <p>Os perfis são automaticamente pontuados por relevância usando machine learning, considerando fatores como similaridade com palavras-chave, senioridade, experiência e localização no Brasil.</p>
+                                <div class="mt-2 flex flex-wrap gap-2">
+                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                        <span class="w-2 h-2 bg-green-400 rounded-full mr-1"></span>
+                                        Alta (≥85%)
+                                    </span>
+                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                                        <span class="w-2 h-2 bg-yellow-400 rounded-full mr-1"></span>
+                                        Moderada (60-84%)
+                                    </span>
+                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                                        <span class="w-2 h-2 bg-red-400 rounded-full mr-1"></span>
+                                        Baixa (<60%)
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Contador de resultados -->
+                <div id="results-counter" class="mt-6 text-center text-gray-600 font-medium hidden">
+                    <i class="fas fa-users mr-2"></i>
+                    <span id="results-count">0</span> perfis encontrados
+                </div>
+
+                <!-- Lista de resultados -->
+                <div id="linkedin-list" class="mt-6">
+                    <div id="profiles-grid" class="grid gap-6 md:grid-cols-2 lg:grid-cols-3"></div>
+                    <div id="no-linkedin-results" class="hidden text-center py-12">
+                        <i class="fas fa-search text-gray-300 text-6xl mb-4"></i>
+                        <h3 class="text-xl font-medium text-gray-500 mb-2">Nenhum perfil encontrado</h3>
+                        <p class="text-gray-400">Tente ajustar os filtros ou usar palavras-chave diferentes</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="linkedin-apify-content" class="tab-content" role="tabpanel" aria-labelledby="linkedin-apify-tab">
+            <div class="bg-white rounded-xl shadow-md p-6">
+                <h2 class="text-2xl font-bold mb-6 text-gray-800 text-center">
+                    <i class="fas fa-robot mr-2 text-purple-600"></i>
+                    Perfis LinkedIn com Apify
+                </h2>
+                
+                <!-- Configuração da API Apify -->
+                <div class="mb-6 bg-purple-50 border-l-4 border-purple-500 p-4 rounded-r-lg">
+                    <h3 class="font-semibold text-lg text-purple-700 mb-4 flex items-center">
+                        <i class="fas fa-cog mr-2"></i>Configuração Apify
+                    </h3>
+                    <div class="grid md:grid-cols-2 gap-4">
+                        <div>
+                            <label for="apify-token" class="block text-sm font-medium text-gray-700 mb-2">Token da API Apify</label>
+                            <input type="password" id="apify-token" 
+                                class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all" 
+                                placeholder="Insira seu token da API Apify"
+                                aria-describedby="token-help">
+                            <p id="token-help" class="text-xs text-gray-500 mt-1">Obtenha seu token em <a href="https://console.apify.com/account/integrations" target="_blank" class="text-purple-600 hover:underline">console.apify.com</a></p>
+                        </div>
+                        <div>
+                            <label for="max-profiles" class="block text-sm font-medium text-gray-700 mb-2">Máximo de perfis</label>
+                            <select id="max-profiles" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500">
+                                <option value="10">10 perfis</option>
+                                <option value="25" selected>25 perfis</option>
+                                <option value="50">50 perfis</option>
+                                <option value="100">100 perfis</option>
+                                <option value="200">200 perfis</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Filtros de Busca -->
+                <div class="mb-6 bg-blue-50 border-l-4 border-blue-500 p-4 rounded-r-lg">
+                    <h3 class="font-semibold text-lg text-blue-700 mb-4 flex items-center">
+                        <i class="fas fa-filter mr-2"></i>Filtros de Busca
+                    </h3>
+                    <div class="grid md:grid-cols-2 gap-4">
+                        <div>
+                            <label for="apify-keywords" class="block text-sm font-medium text-gray-700 mb-2">Palavras-chave *</label>
+                            <input type="text" id="apify-keywords" 
+                                class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all" 
+                                placeholder="Ex: software engineer, data scientist"
+                                aria-describedby="apify-keywords-help">
+                            <p id="apify-keywords-help" class="text-xs text-gray-500 mt-1">Termos de busca para encontrar perfis relevantes</p>
+                        </div>
+                        <div>
+                            <label for="apify-location" class="block text-sm font-medium text-gray-700 mb-2">Localização</label>
+                            <input type="text" id="apify-location" 
+                                class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all" 
+                                placeholder="Ex: Brazil, São Paulo, United States"
+                                aria-describedby="apify-location-help">
+                            <p id="apify-location-help" class="text-xs text-gray-500 mt-1">País, estado ou cidade</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Filtros Avançados -->
+                <div class="filter-section bg-gray-50 border border-gray-200">
+                    <div class="filter-title flex items-center justify-between p-4 bg-gray-100 rounded-t-lg" 
+                         onclick="toggleApifyFilter('apify-advanced-filters')" 
+                         role="button" 
+                         tabindex="0" 
+                         aria-expanded="false"
+                         onkeypress="if(event.key==='Enter') toggleApifyFilter('apify-advanced-filters')">
+                        <span class="flex items-center">
+                            <i class="fas fa-sliders-h mr-2 text-gray-600"></i>
+                            <span class="font-semibold text-gray-700">Filtros Avançados</span>
+                        </span>
+                        <i id="apify-advanced-filters-icon" class="fas fa-chevron-down text-gray-500 transition-transform"></i>
+                    </div>
+                    <div id="apify-advanced-filters" class="filter-content p-4">
+                        <div class="grid md:grid-cols-2 gap-6">
+                            <!-- Empresa -->
+                            <div>
+                                <label for="apify-company" class="block text-sm font-medium text-gray-700 mb-2">Empresa</label>
+                                <input type="text" id="apify-company" 
+                                    class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500" 
+                                    placeholder="Ex: Google, Microsoft, Nubank">
+                            </div>
+
+                            <!-- Setor -->
+                            <div>
+                                <label for="apify-industry" class="block text-sm font-medium text-gray-700 mb-2">Setor</label>
+                                <select id="apify-industry" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500">
+                                    <option value="">Todos os setores</option>
+                                    <option value="technology">Tecnologia</option>
+                                    <option value="finance">Financeiro</option>
+                                    <option value="healthcare">Saúde</option>
+                                    <option value="education">Educação</option>
+                                    <option value="consulting">Consultoria</option>
+                                    <option value="retail">Varejo</option>
+                                    <option value="manufacturing">Manufatura</option>
+                                </select>
+                            </div>
+
+                            <!-- Nível de experiência -->
+                            <div>
+                                <label for="apify-seniority" class="block text-sm font-medium text-gray-700 mb-2">Nível de experiência</label>
+                                <select id="apify-seniority" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500">
+                                    <option value="">Todos os níveis</option>
+                                    <option value="internship">Estagiário</option>
+                                    <option value="entry">Júnior</option>
+                                    <option value="associate">Pleno</option>
+                                    <option value="mid-senior">Sênior</option>
+                                    <option value="director">Diretor</option>
+                                    <option value="executive">Executivo</option>
+                                </select>
+                            </div>
+
+                            <!-- Função -->
+                            <div>
+                                <label for="apify-function" class="block text-sm font-medium text-gray-700 mb-2">Função</label>
+                                <select id="apify-function" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500">
+                                    <option value="">Todas as funções</option>
+                                    <option value="engineering">Engenharia</option>
+                                    <option value="sales">Vendas</option>
+                                    <option value="marketing">Marketing</option>
+                                    <option value="operations">Operações</option>
+                                    <option value="finance">Finanças</option>
+                                    <option value="hr">Recursos Humanos</option>
+                                    <option value="consulting">Consultoria</option>
+                                </select>
+                            </div>
+
+                            <!-- Certificações -->
+                            <div>
+                                <label for="apify-certifications" class="block text-sm font-medium text-gray-700 mb-2">Certificações</label>
+                                <input type="text" id="apify-certifications" 
+                                    class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500" 
+                                    placeholder="Ex: AWS, PMP, Scrum Master (separados por vírgula)">
+                            </div>
+
+                            <!-- Escola -->
+                            <div>
+                                <label for="apify-school" class="block text-sm font-medium text-gray-700 mb-2">Escola/Universidade</label>
+                                <input type="text" id="apify-school" 
+                                    class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500" 
+                                    placeholder="Ex: USP, MIT, Stanford">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Error container for Apify -->
+                <div id="apify-error-container"></div>
+                
+                <!-- Botões de ação -->
+                <div class="flex gap-4 mt-6">
+                    <button id="clear-apify-filters" 
+                            class="flex-1 bg-gray-500 hover:bg-gray-600 text-white py-3 px-6 rounded-lg transition-all font-medium flex items-center justify-center"
+                            onclick="clearApifyFilters()">
+                        <i class="fas fa-eraser mr-2"></i>
+                        Limpar Filtros
+                    </button>
+                    <button id="search-apify" 
+                            class="flex-2 bg-purple-600 hover:bg-purple-700 text-white py-3 px-6 rounded-lg transition-all font-medium flex items-center justify-center"
+                            onclick="searchApifyProfiles()">
+                        <i class="fas fa-robot mr-2"></i>
+                        Buscar com Apify
+                        <span id="apify-search-loading" class="hidden ml-2">
+                            <i class="fas fa-spinner fa-spin"></i>
+                        </span>
+                    </button>
+                </div>
+
+                <!-- Status da execução -->
+                <div id="apify-status" class="mt-6 hidden">
+                    <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                        <div class="flex items-center">
+                            <i class="fas fa-info-circle text-blue-500 mr-2"></i>
+                            <span class="text-blue-700 font-medium">Status da execução:</span>
+                            <span id="apify-status-text" class="ml-2 text-blue-600">Iniciando...</span>
+                        </div>
+                        <div class="mt-2">
+                            <div class="bg-blue-200 rounded-full h-2">
+                                <div id="apify-progress" class="bg-blue-600 h-2 rounded-full transition-all duration-300" style="width: 0%"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Contador de resultados -->
+                <div id="apify-results-counter" class="mt-6 text-center text-gray-600 font-medium hidden">
+                    <i class="fas fa-users mr-2"></i>
+                    <span id="apify-results-count">0</span> perfis encontrados via Apify
+                </div>
+
+                <!-- Botões de exportação -->
+                <div id="apify-export-section" class="mt-6 hidden">
+                    <div class="bg-green-50 border border-green-200 rounded-lg p-4">
+                        <h4 class="font-semibold text-green-800 mb-3 flex items-center">
+                            <i class="fas fa-download mr-2"></i>
+                            Exportar Resultados
+                        </h4>
+                        <div class="flex gap-3">
+                            <button onclick="exportApifyResults('csv')" 
+                                    class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center">
+                                <i class="fas fa-file-csv mr-2"></i>CSV
+                            </button>
+                            <button onclick="exportApifyResults('excel')" 
+                                    class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center">
+                                <i class="fas fa-file-excel mr-2"></i>Excel
+                            </button>
+                            <button onclick="exportApifyResults('json')" 
+                                    class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center">
+                                <i class="fas fa-file-code mr-2"></i>JSON
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Lista de resultados -->
+                <div id="apify-list" class="mt-6">
+                    <div id="apify-profiles-grid" class="grid gap-6 md:grid-cols-2 lg:grid-cols-3"></div>
+                    <div id="no-apify-results" class="hidden text-center py-12">
+                        <i class="fas fa-robot text-gray-300 text-6xl mb-4"></i>
+                        <h3 class="text-xl font-medium text-gray-500 mb-2">Nenhum perfil encontrado</h3>
+                        <p class="text-gray-400">Verifique os filtros e tente novamente</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Mock data for LinkedIn profiles
+        const mockLinkedinProfiles = [
+            {
+                id: 1,
+                name: "Carlos Silva",
+                title: "Blockchain Developer",
+                company: "Fintech XYZ",
+                location: "São Paulo, BR",
+                experience: "5+ anos",
+                skills: ["Hyperledger Besu", "Ethereum", "Solidity", "JavaScript"],
+                photo: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop&crop=face"
+            },
+            {
+                id: 2,
+                name: "Ana Oliveira",
+                title: "CTO Blockchain Solutions",
+                company: "Tech Innovations",
+                location: "Rio de Janeiro, BR",
+                experience: "7+ anos",
+                skills: ["Hyperledger Fabric", "Smart Contracts", "Python", "React"],
+                photo: "https://images.unsplash.com/photo-1494790108755-2616b612b786?w=150&h=150&fit=crop&crop=face"
+            },
+            {
+                id: 3,
+                name: "Roberto Santos",
+                title: "Senior Full Stack Developer",
+                company: "Nubank",
+                location: "São Paulo, BR",
+                experience: "8+ anos",
+                skills: ["React", "Node.js", "TypeScript", "AWS"],
+                photo: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face"
+            },
+            {
+                id: 4,
+                name: "Mariana Costa",
+                title: "Data Scientist",
+                company: "iFood",
+                location: "São Paulo, BR",
+                experience: "4+ anos",
+                skills: ["Python", "Machine Learning", "TensorFlow", "SQL"],
+                photo: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=150&h=150&fit=crop&crop=face"
+            },
+            {
+                id: 5,
+                name: "João Pereira",
+                title: "DevOps Engineer",
+                company: "Stone",
+                location: "Rio de Janeiro, BR",
+                experience: "6+ anos",
+                skills: ["Docker", "Kubernetes", "AWS", "Terraform"],
+                photo: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&h=150&fit=crop&crop=face"
+            },
+            {
+                id: 6,
+                name: "Fernanda Lima",
+                title: "Product Manager",
+                company: "Mercado Livre",
+                location: "Buenos Aires, AR",
+                experience: "5+ anos",
+                skills: ["Product Strategy", "Agile", "Analytics", "UX"],
+                photo: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=150&h=150&fit=crop&crop=face"
+            }
+        ];
+
+        let selectedSkills = [];
+        let selectedCertifications = [];
+
+        // Validation functions
+        function showError(containerId, message) {
+            const container = document.getElementById(containerId);
+            container.innerHTML = `
+                <div class="error-message">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    ${message}
+                </div>
+            `;
+        }
+
+        function showSuccess(containerId, message) {
+            const container = document.getElementById(containerId);
+            container.innerHTML = `
+                <div class="success-message">
+                    <i class="fas fa-check-circle"></i>
+                    ${message}
+                </div>
+            `;
+        }
+
+        function clearMessages(containerId) {
+            const container = document.getElementById(containerId);
+            container.innerHTML = '';
+        }
+
+        function addFieldError(fieldId) {
+            const field = document.getElementById(fieldId);
+            field.classList.add('field-error');
+        }
+
+        function removeFieldError(fieldId) {
+            const field = document.getElementById(fieldId);
+            field.classList.remove('field-error');
+        }
+
+        function validateAcademicForm() {
+            const keywords = document.getElementById('academic-keywords').value.trim();
+            let isValid = true;
+            let errorMessages = [];
+
+            // Clear previous errors
+            clearMessages('academic-error-container');
+            removeFieldError('academic-keywords');
+
+            // Validate required keywords field
+            if (!keywords) {
+                errorMessages.push('O campo "Palavras-chave" é obrigatório para realizar a busca.');
+                addFieldError('academic-keywords');
+                isValid = false;
+            } else if (keywords.length < 2) {
+                errorMessages.push('As palavras-chave devem ter pelo menos 2 caracteres.');
+                addFieldError('academic-keywords');
+                isValid = false;
+            }
+
+            // Show error messages if validation failed
+            if (!isValid) {
+                const errorHtml = errorMessages.map(msg => 
+                    `<div class="error-message">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        ${msg}
+                    </div>`
+                ).join('');
+                document.getElementById('academic-error-container').innerHTML = errorHtml;
+            }
+
+            return isValid;
+        }
+
+        function validateLinkedinForm() {
+            const keywords = document.getElementById('linkedin-keywords').value.trim();
+            let isValid = true;
+            let errorMessages = [];
+
+            // Clear previous errors
+            clearMessages('linkedin-error-container');
+            removeFieldError('linkedin-keywords');
+
+            // Validate keywords field (recommended but not strictly required for LinkedIn)
+            if (!keywords) {
+                errorMessages.push('Recomendamos preencher o campo "Palavras-chave" para obter melhores resultados de busca.');
+                addFieldError('linkedin-keywords');
+                // For LinkedIn, we'll show a warning but still allow the search
+                const warningHtml = `
+                    <div class="error-message" style="background-color: #FEF3C7; border-color: #FCD34D; color: #92400E;">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        ${errorMessages[0]}
+                    </div>
+                `;
+                document.getElementById('linkedin-error-container').innerHTML = warningHtml;
+                return true; // Allow search to continue with warning
+            } else if (keywords.length < 2) {
+                errorMessages.push('As palavras-chave devem ter pelo menos 2 caracteres.');
+                addFieldError('linkedin-keywords');
+                isValid = false;
+            }
+
+            // Show error messages if validation failed
+            if (!isValid) {
+                const errorHtml = errorMessages.map(msg => 
+                    `<div class="error-message">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        ${msg}
+                    </div>`
+                ).join('');
+                document.getElementById('linkedin-error-container').innerHTML = errorHtml;
+            }
+
+            return isValid;
+        }
+
+        function searchAcademicArticles() {
+            // Validate form before proceeding
+            if (!validateAcademicForm()) {
+                return; // Stop execution if validation fails
+            }
+
+            // Clear any previous error messages
+            clearMessages('academic-error-container');
+            
+            // Collect form data
+            const formData = collectAcademicFormData();
+            
+            // Show loading message
+            showSuccess('academic-error-container', 'Busca iniciada com sucesso! Processando...');
+            
+            // Simulate backend call (in production, this would be an actual API call)
+            simulateAcademicSearch(formData);
+        }
+
+        function collectAcademicFormData() {
+            const keywords = document.getElementById('academic-keywords').value.trim();
+            const publicationYear = document.getElementById('publication-year').value;
+            const authors = document.getElementById('authors').value.trim();
+            const language = document.getElementById('language').value;
+            const knowledgeArea = document.getElementById('knowledge-area').value;
+            const affiliatedInstitution = document.getElementById('affiliated-institution').value.trim();
+            const authorCountry = document.getElementById('author-country').value;
+            
+            // Get selected data sources
+            const dataSourceSelect = document.getElementById('data-source');
+            const selectedSources = Array.from(dataSourceSelect.selectedOptions).map(option => option.value);
+            
+            return {
+                keywords,
+                sources: selectedSources.length > 0 ? selectedSources : null,
+                publication_year: publicationYear || null,
+                authors: authors || null,
+                language: language || null,
+                knowledge_area: knowledgeArea || null,
+                affiliated_institution: affiliatedInstitution || null,
+                author_country: authorCountry || null
+            };
+        }
+
+        function simulateAcademicSearch(formData) {
+            // Simulate processing time
+            setTimeout(() => {
+                clearMessages('academic-error-container');
+                
+                // Generate mock results based on form data
+                const mockResults = generateMockAcademicResults(formData);
+                displayAcademicResults(mockResults);
+                
+                showSuccess('academic-error-container', `Busca concluída! ${mockResults.length} artigos encontrados.`);
+                
+                // Clear success message after 3 seconds
+                setTimeout(() => {
+                    clearMessages('academic-error-container');
+                }, 3000);
+            }, 2000);
+        }
+
+        function generateMockAcademicResults(formData) {
+            const baseResults = [
+                {
+                    title: 'Machine Learning Applications in Healthcare',
+                    authors: 'Silva, J.; Santos, M.; Oliveira, A.',
+                    year: '2023',
+                    source: 'Google Scholar',
+                    snippet: 'This paper explores the applications of machine learning in healthcare systems...',
+                    link: 'https://scholar.google.com/example1'
+                },
+                {
+                    title: 'Blockchain Technology for Supply Chain Management',
+                    authors: 'Costa, R.; Lima, F.',
+                    year: '2022',
+                    source: 'arXiv',
+                    snippet: 'A comprehensive study on blockchain implementation in supply chains...',
+                    link: 'https://arxiv.org/abs/example2'
+                },
+                {
+                    title: 'Análise de Algoritmos de Inteligência Artificial',
+                    authors: 'Pereira, L.; Rodrigues, C.',
+                    year: '2023',
+                    source: 'SciELO',
+                    snippet: 'Este artigo apresenta uma análise detalhada dos algoritmos de IA...',
+                    link: 'https://scielo.org/example3'
+                },
+                {
+                    title: 'Deep Learning for Computer Vision',
+                    authors: 'Wang, X.; Zhang, Y.; Liu, Z.',
+                    year: '2023',
+                    source: 'DBLP',
+                    snippet: 'Recent advances in deep learning techniques for computer vision applications...',
+                    link: 'https://dblp.org/example4'
+                }
+            ];
+
+            // Filter results based on form data
+            let filteredResults = baseResults;
+
+            // Filter by selected sources
+            if (formData.sources && formData.sources.length > 0) {
+                const sourceMap = {
+                    'google-scholar': 'Google Scholar',
+                    'arxiv': 'arXiv',
+                    'scielo': 'SciELO',
+                    'dblp': 'DBLP'
+                };
+                const selectedSourceNames = formData.sources.map(s => sourceMap[s]).filter(Boolean);
+                filteredResults = filteredResults.filter(r => selectedSourceNames.includes(r.source));
+            }
+
+            // Filter by language
+            if (formData.language === 'portuguese') {
+                filteredResults = filteredResults.filter(r => 
+                    r.title.includes('Análise') || r.snippet.includes('Este artigo')
+                );
+            } else if (formData.language === 'english') {
+                filteredResults = filteredResults.filter(r => 
+                    !r.title.includes('Análise') && !r.snippet.includes('Este artigo')
+                );
+            }
+
+            // Filter by publication year
+            if (formData.publication_year) {
+                const [startYear, endYear] = formData.publication_year.split('-').map(Number);
+                filteredResults = filteredResults.filter(r => {
+                    const year = parseInt(r.year);
+                    return year >= startYear && year <= endYear;
+                });
+            }
+
+            return filteredResults;
+        }
+
+        function displayAcademicResults(results) {
+            const academicList = document.getElementById('academic-list');
+            const noResults = document.getElementById('no-academic-results');
+
+            if (results.length === 0) {
+                academicList.innerHTML = '';
+                noResults.classList.remove('hidden');
+                return;
+            }
+
+            noResults.classList.add('hidden');
+            
+            const resultsHtml = results.map(result => `
+                <div class="card p-4 border border-gray-200 rounded-lg">
+                    <h4 class="font-medium text-blue-600">
+                        <a href="${result.link}" target="_blank" class="hover:underline">
+                            ${result.title}
+                        </a>
+                        <span class="badge">${result.source}</span>
+                    </h4>
+                    <p class="text-sm text-gray-500">Autores: ${result.authors}</p>
+                    <p class="text-sm text-gray-500">Ano: ${result.year} | Fonte: ${result.source}</p>
+                    <p class="text-gray-700 mt-2">${result.snippet}</p>
+                </div>
+            `).join('');
+
+            academicList.innerHTML = resultsHtml;
+        }
+
+        function switchTab(tab) {
+            const academicContent = document.getElementById('academic-content');
+            const linkedinContent = document.getElementById('linkedin-content');
+            const linkedinApifyContent = document.getElementById('linkedin-apify-content');
+            const academicTab = document.getElementById('academic-tab');
+            const linkedinTab = document.getElementById('linkedin-tab');
+            const linkedinApifyTab = document.getElementById('linkedin-apify-tab');
+
+            // Hide all content
+            academicContent.classList.remove('active');
+            linkedinContent.classList.remove('active');
+            linkedinApifyContent.classList.remove('active');
+            
+            // Deactivate all tabs
+            academicTab.classList.remove('active');
+            linkedinTab.classList.remove('active');
+            linkedinApifyTab.classList.remove('active');
+            
+            // Reset aria-selected
+            academicTab.setAttribute('aria-selected', 'false');
+            linkedinTab.setAttribute('aria-selected', 'false');
+            linkedinApifyTab.setAttribute('aria-selected', 'false');
+
+            if (tab === 'academic') {
+                academicContent.classList.add('active');
+                academicTab.classList.add('active');
+                academicTab.setAttribute('aria-selected', 'true');
+            } else if (tab === 'linkedin') {
+                linkedinContent.classList.add('active');
+                linkedinTab.classList.add('active');
+                linkedinTab.setAttribute('aria-selected', 'true');
+            } else if (tab === 'linkedin-apify') {
+                linkedinApifyContent.classList.add('active');
+                linkedinApifyTab.classList.add('active');
+                linkedinApifyTab.setAttribute('aria-selected', 'true');
+            }
+        }
+
+        function toggleFilter(filterId) {
+            const filterContent = document.getElementById(filterId);
+            const isActive = filterContent.classList.contains('active');
+            
+            if (isActive) {
+                filterContent.classList.remove('active');
+            } else {
+                filterContent.classList.add('active');
+            }
+        }
+
+        function toggleLinkedinFilter(filterId) {
+            const filterContent = document.getElementById(filterId);
+            const icon = document.getElementById(filterId + '-icon');
+            const isActive = filterContent.classList.contains('active');
+            
+            if (isActive) {
+                filterContent.classList.remove('active');
+                icon.classList.remove('fa-chevron-up');
+                icon.classList.add('fa-chevron-down');
+                filterContent.parentElement.querySelector('[role="button"]').setAttribute('aria-expanded', 'false');
+            } else {
+                filterContent.classList.add('active');
+                icon.classList.remove('fa-chevron-down');
+                icon.classList.add('fa-chevron-up');
+                filterContent.parentElement.querySelector('[role="button"]').setAttribute('aria-expanded', 'true');
+            }
+        }
+
+        function handleSkillInput(event) {
+            const input = event.target;
+            const suggestionsDiv = document.getElementById('skills-suggestions');
+            
+            if (input.value.length > 0) {
+                suggestionsDiv.classList.remove('hidden');
+            } else {
+                suggestionsDiv.classList.add('hidden');
+            }
+
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                const skill = input.value.trim();
+                if (skill && !selectedSkills.includes(skill)) {
+                    addSkill(skill);
+                    input.value = '';
+                    suggestionsDiv.classList.add('hidden');
+                }
+            }
+        }
+
+        function addSkill(skill) {
+            if (!selectedSkills.includes(skill)) {
+                selectedSkills.push(skill);
+                updateSelectedSkills();
+            }
+        }
+
+        function removeSkill(skill) {
+            selectedSkills = selectedSkills.filter(s => s !== skill);
+            updateSelectedSkills();
+        }
+
+        function updateSelectedSkills() {
+            const container = document.getElementById('selected-skills');
+            container.innerHTML = selectedSkills.map(skill => 
+                `<span class="px-3 py-1 bg-blue-500 text-white rounded-full text-sm flex items-center">
+                    ${skill}
+                    <button onclick="removeSkill('${skill}')" class="ml-2 text-blue-200 hover:text-white">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </span>`
+            ).join('');
+        }
+
+        function handleCertificationInput(event) {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                const input = event.target;
+                const certification = input.value.trim();
+                if (certification && !selectedCertifications.includes(certification)) {
+                    selectedCertifications.push(certification);
+                    updateSelectedCertifications();
+                    input.value = '';
+                }
+            }
+        }
+
+        function updateSelectedCertifications() {
+            const container = document.getElementById('selected-certifications');
+            container.innerHTML = selectedCertifications.map(cert => 
+                `<span class="px-3 py-1 bg-green-500 text-white rounded-full text-sm flex items-center">
+                    ${cert}
+                    <button onclick="removeCertification('${cert}')" class="ml-2 text-green-200 hover:text-white">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </span>`
+            ).join('');
+        }
+
+        function removeCertification(cert) {
+            selectedCertifications = selectedCertifications.filter(c => c !== cert);
+            updateSelectedCertifications();
+        }
+
+        function clearLinkedinFilters() {
+            // Clear all form inputs
+            document.getElementById('linkedin-keywords').value = '';
+            document.getElementById('linkedin-location').value = '';
+            document.getElementById('job-seniority').value = '';
+            document.getElementById('industry').selectedIndex = -1;
+            document.getElementById('technical-skills').value = '';
+            document.getElementById('languages').selectedIndex = -1;
+            document.getElementById('company').value = '';
+            document.getElementById('linkedin-seniority').value = '';
+            document.getElementById('linkedin-function').value = '';
+            document.getElementById('linkedin-connections').value = '';
+            document.getElementById('linkedin-school').value = '';
+            document.getElementById('education').value = '';
+            document.getElementById('certifications').value = '';
+
+            // Clear checkboxes
+            document.querySelectorAll('.experience-checkbox').forEach(checkbox => {
+                checkbox.checked = false;
+            });
+
+            // Clear selected skills and certifications
+            selectedSkills = [];
+            selectedCertifications = [];
+            updateSelectedSkills();
+            updateSelectedCertifications();
+
+            // Hide suggestions
+            document.getElementById('skills-suggestions').classList.add('hidden');
+
+            // Clear results
+            document.getElementById('profiles-grid').innerHTML = '';
+            document.getElementById('results-counter').classList.add('hidden');
+            document.getElementById('no-linkedin-results').classList.add('hidden');
+        }
+
+        function searchLinkedinProfiles() {
+            // Validate form before proceeding (shows warning but allows search)
+            validateLinkedinForm();
+
+            const loadingSpinner = document.getElementById('search-loading');
+            const resultsCounter = document.getElementById('results-counter');
+            const resultsCount = document.getElementById('results-count');
+            const profilesGrid = document.getElementById('profiles-grid');
+            const noResults = document.getElementById('no-linkedin-results');
+
+            // Show loading
+            loadingSpinner.classList.remove('hidden');
+
+            // Collect form data
+            const formData = collectLinkedinFormData();
+
+            // Simulate search delay
+            setTimeout(() => {
+                loadingSpinner.classList.add('hidden');
+
+                // Generate mock results based on form data
+                const mockResults = generateMockLinkedinResults(formData);
+
+                // Display results
+                if (mockResults.length > 0) {
+                    displayProfiles(mockResults);
+                    resultsCount.textContent = mockResults.length;
+                    resultsCounter.classList.remove('hidden');
+                    noResults.classList.add('hidden');
+                    
+                    // Show success message if search was successful
+                    setTimeout(() => {
+                        clearMessages('linkedin-error-container');
+                        showSuccess('linkedin-error-container', `Busca concluída! ${mockResults.length} perfis encontrados.`);
+                        setTimeout(() => {
+                            clearMessages('linkedin-error-container');
+                        }, 3000);
+                    }, 500);
+                } else {
+                    profilesGrid.innerHTML = '';
+                    resultsCounter.classList.add('hidden');
+                    noResults.classList.remove('hidden');
+                }
+            }, 1500);
+        }
+
+        function collectLinkedinFormData() {
+            const keywords = document.getElementById('linkedin-keywords').value.trim();
+            const location = document.getElementById('linkedin-location').value.trim();
+            const company = document.getElementById('company').value.trim();
+            const certifications = document.getElementById('certifications').value.trim();
+            const school = document.getElementById('linkedin-school').value.trim();
+            
+            // Get selected industry
+            const industrySelect = document.getElementById('industry');
+            const selectedIndustry = industrySelect ? industrySelect.value : '';
+            
+            // Get selected seniority
+            const senioritySelect = document.getElementById('linkedin-seniority');
+            const selectedSeniority = senioritySelect ? senioritySelect.value : '';
+            
+            // Get selected function
+            const functionSelect = document.getElementById('linkedin-function');
+            const selectedFunction = functionSelect ? functionSelect.value : '';
+            
+            return {
+                keywords: keywords || null,
+                location: location || null,
+                company: company || null,
+                industry: selectedIndustry || null,
+                seniority: selectedSeniority || null,
+                function: selectedFunction || null,
+                certifications: certifications ? certifications.split(',').map(c => c.trim()) : null,
+                school: school || null
+            };
+        }
+
+        function generateMockLinkedinResults(formData) {
+            // Enhanced mock profiles with more detailed data
+            const baseProfiles = [
+                {
+                    id: 1,
+                    name: "Carlos Silva",
+                    title: "Senior Python Developer",
+                    company: "Nubank",
+                    location: "São Paulo, BR",
+                    experience: "5-10",
+                    seniority: "senior",
+                    industry: "fintech",
+                    skills: ["Python", "Django", "AWS", "Docker"],
+                    languages: ["português", "inglês"],
+                    education: "bacharel",
+                    certifications: ["AWS Solutions Architect"],
+                    photo: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop&crop=face"
+                },
+                {
+                    id: 2,
+                    name: "Ana Oliveira",
+                    title: "Full Stack Developer",
+                    company: "iFood",
+                    location: "São Paulo, BR",
+                    experience: "2-5",
+                    seniority: "pleno",
+                    industry: "tecnologia",
+                    skills: ["JavaScript", "React", "Node.js", "MongoDB"],
+                    languages: ["português", "inglês"],
+                    education: "bacharel",
+                    certifications: ["Scrum Master"],
+                    photo: "https://images.unsplash.com/photo-1494790108755-2616b612b786?w=150&h=150&fit=crop&crop=face"
+                },
+                {
+                    id: 3,
+                    name: "Roberto Santos",
+                    title: "Junior Software Engineer",
+                    company: "Stone",
+                    location: "Rio de Janeiro, BR",
+                    experience: "0-2",
+                    seniority: "junior",
+                    industry: "fintech",
+                    skills: ["Java", "Spring Boot", "MySQL"],
+                    languages: ["português"],
+                    education: "bacharel",
+                    certifications: [],
+                    photo: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face"
+                },
+                {
+                    id: 4,
+                    name: "Mariana Costa",
+                    title: "Data Scientist",
+                    company: "Mercado Livre",
+                    location: "Buenos Aires, AR",
+                    experience: "2-5",
+                    seniority: "pleno",
+                    industry: "ecommerce",
+                    skills: ["Python", "Machine Learning", "TensorFlow", "SQL"],
+                    languages: ["português", "espanhol", "inglês"],
+                    education: "mestrado",
+                    certifications: ["Google Cloud Professional"],
+                    photo: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=150&h=150&fit=crop&crop=face"
+                },
+                {
+                    id: 5,
+                    name: "João Pereira",
+                    title: "DevOps Engineer",
+                    company: "Globo",
+                    location: "Rio de Janeiro, BR",
+                    experience: "5-10",
+                    seniority: "senior",
+                    industry: "tecnologia",
+                    skills: ["Docker", "Kubernetes", "AWS", "Terraform"],
+                    languages: ["português", "inglês"],
+                    education: "bacharel",
+                    certifications: ["AWS DevOps Professional", "Kubernetes Administrator"],
+                    photo: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&h=150&fit=crop&crop=face"
+                },
+                {
+                    id: 6,
+                    name: "Fernanda Lima",
+                    title: "Product Manager",
+                    company: "Uber",
+                    location: "São Paulo, BR",
+                    experience: "5-10",
+                    seniority: "senior",
+                    industry: "tecnologia",
+                    skills: ["Product Strategy", "Agile", "Analytics", "SQL"],
+                    languages: ["português", "inglês"],
+                    education: "mba",
+                    certifications: ["PMP", "Scrum Product Owner"],
+                    photo: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=150&h=150&fit=crop&crop=face"
+                }
+            ];
+
+            // Apply filters
+            let filteredProfiles = baseProfiles;
+
+            // Filter by keywords
+            if (formData.keywords) {
+                const keywords = formData.keywords.toLowerCase();
+                filteredProfiles = filteredProfiles.filter(profile => 
+                    profile.name.toLowerCase().includes(keywords) ||
+                    profile.title.toLowerCase().includes(keywords) ||
+                    profile.skills.some(skill => skill.toLowerCase().includes(keywords))
+                );
+            }
+
+            // Filter by location
+            if (formData.location) {
+                const location = formData.location.toLowerCase();
+                filteredProfiles = filteredProfiles.filter(profile => 
+                    profile.location.toLowerCase().includes(location)
+                );
+            }
+
+            // Filter by seniority
+            if (formData.job_seniority) {
+                filteredProfiles = filteredProfiles.filter(profile => 
+                    profile.seniority === formData.job_seniority
+                );
+            }
+
+            // Filter by experience ranges
+            if (formData.experience_ranges) {
+                filteredProfiles = filteredProfiles.filter(profile => 
+                    formData.experience_ranges.includes(profile.experience)
+                );
+            }
+
+            // Filter by industries
+            if (formData.industries) {
+                filteredProfiles = filteredProfiles.filter(profile => 
+                    formData.industries.includes(profile.industry)
+                );
+            }
+
+            // Filter by technical skills
+            if (formData.technical_skills) {
+                filteredProfiles = filteredProfiles.filter(profile => 
+                    formData.technical_skills.some(skill => 
+                        profile.skills.some(profileSkill => 
+                            profileSkill.toLowerCase().includes(skill.toLowerCase())
+                        )
+                    )
+                );
+            }
+
+            // Filter by company
+            if (formData.company) {
+                const company = formData.company.toLowerCase();
+                filteredProfiles = filteredProfiles.filter(profile => 
+                    profile.company.toLowerCase().includes(company)
+                );
+            }
+
+            // Filter by education
+            if (formData.education) {
+                filteredProfiles = filteredProfiles.filter(profile => 
+                    profile.education === formData.education
+                );
+            }
+
+            // Filter by certifications
+            if (formData.certifications) {
+                filteredProfiles = filteredProfiles.filter(profile => 
+                    formData.certifications.some(cert => 
+                        profile.certifications.some(profileCert => 
+                            profileCert.toLowerCase().includes(cert.toLowerCase())
+                        )
+                    )
+                );
+            }
+
+            return filteredProfiles;
+        }
+
+        function displayProfiles(profiles) {
+            const profilesGrid = document.getElementById('profiles-grid');
+            
+            profilesGrid.innerHTML = profiles.map(profile => {
+                // Determine score display and colors
+                let scoreDisplay = '';
+                let scoreClass = '';
+                let badgeClass = '';
+                
+                if (profile.score !== undefined) {
+                    const score = profile.score_percentage || (profile.score * 100);
+                    const classification = profile.classification || 'Sem classificação';
+                    const colorClass = profile.color_class || 'medium';
+                    
+                    // Set colors based on classification
+                    if (colorClass === 'high') {
+                        scoreClass = 'text-green-600 bg-green-50 border-green-200';
+                        badgeClass = 'bg-green-500';
+                    } else if (colorClass === 'medium') {
+                        scoreClass = 'text-yellow-600 bg-yellow-50 border-yellow-200';
+                        badgeClass = 'bg-yellow-500';
+                    } else if (colorClass === 'low') {
+                        scoreClass = 'text-red-600 bg-red-50 border-red-200';
+                        badgeClass = 'bg-red-500';
+                    } else {
+                        scoreClass = 'text-gray-600 bg-gray-50 border-gray-200';
+                        badgeClass = 'bg-gray-500';
+                    }
+                    
+                    // Create tooltip content for explanations
+                    const explanations = profile.feature_explanations || [];
+                    const tooltipContent = explanations.length > 0 
+                        ? explanations.join('\\n• ') 
+                        : 'Nenhuma explicação disponível';
+                    
+                    scoreDisplay = `
+                        <div class="mb-3 p-3 rounded-lg border ${scoreClass}">
+                            <div class="flex items-center justify-between mb-2">
+                                <div class="flex items-center">
+                                    <div class="w-3 h-3 rounded-full ${badgeClass} mr-2"></div>
+                                    <span class="font-semibold text-sm">Score de Relevância</span>
+                                </div>
+                                <span class="font-bold text-lg">${score.toFixed(1)}%</span>
+                            </div>
+                            <div class="text-xs font-medium mb-2">${classification}</div>
+                            <div class="w-full bg-gray-200 rounded-full h-2">
+                                <div class="h-2 rounded-full transition-all duration-300 ${badgeClass}" 
+                                     style="width: ${Math.max(score, 5)}%"></div>
+                            </div>
+                            ${explanations.length > 0 ? `
+                                <div class="mt-2">
+                                    <button onclick="showScoreDetails('${profile.id || profile.name}', '${classification}', ${JSON.stringify(explanations).replace(/"/g, '"')})" 
+                                            class="text-xs underline hover:no-underline">
+                                        Ver detalhes do score
+                                    </button>
+                                </div>
+                            ` : ''}
+                        </div>
+                    `;
+                }
+                
+                return `
+                    <div class="card bg-white border border-gray-200 rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-all cursor-pointer">
+                        <div class="p-6">
+                            <div class="flex items-center mb-4">
+                                <div class="w-16 h-16 rounded-full bg-blue-100 flex items-center justify-center border-2 border-blue-200">
+                                    <i class="fas fa-user text-blue-600 text-xl"></i>
+                                </div>
+                                <div class="ml-4 flex-1">
+                                    <h4 class="font-bold text-lg text-gray-900 mb-1">${profile.name}</h4>
+                                    <p class="text-blue-600 font-medium text-sm">${profile.title}</p>
+                                </div>
+                            </div>
+                            
+                            ${scoreDisplay}
+                            
+                            <div class="space-y-3 text-sm text-gray-600">
+                                <div class="flex items-center">
+                                    <i class="fas fa-building mr-3 text-blue-500 w-4"></i>
+                                    <span>${profile.company} • ${profile.location}</span>
+                                </div>
+                                <div class="flex items-center">
+                                    <i class="fas fa-clock mr-3 text-green-500 w-4"></i>
+                                    <span>${profile.experience} experiência</span>
+                                </div>
+                                <div class="flex items-start">
+                                    <i class="fas fa-code mr-3 text-purple-500 w-4 mt-1"></i>
+                                    <div class="flex flex-wrap gap-1">
+                                        ${profile.skills.slice(0, 3).map(skill => 
+                                            `<span class="px-2 py-1 bg-gray-100 text-gray-700 rounded-full text-xs font-medium">${skill}</span>`
+                                        ).join('')}
+                                        ${profile.skills.length > 3 ? 
+                                            `<span class="px-2 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-medium">+${profile.skills.length - 3}</span>` 
+                                            : ''}
+                                    </div>
+                                </div>
+                                ${profile.certifications && profile.certifications.length > 0 ? `
+                                    <div class="flex items-start">
+                                        <i class="fas fa-certificate mr-3 text-yellow-500 w-4 mt-1"></i>
+                                        <div class="flex flex-wrap gap-1">
+                                            ${profile.certifications.slice(0, 2).map(cert => 
+                                                `<span class="px-2 py-1 bg-yellow-100 text-yellow-700 rounded-full text-xs font-medium">${cert}</span>`
+                                            ).join('')}
+                                            ${profile.certifications.length > 2 ? 
+                                                `<span class="px-2 py-1 bg-yellow-100 text-yellow-700 rounded-full text-xs font-medium">+${profile.certifications.length - 2}</span>` 
+                                                : ''}
+                                        </div>
+                                    </div>
+                                ` : ''}
+                            </div>
+                            
+                            <div class="mt-4 pt-4 border-t border-gray-100">
+                                <button onclick="window.open('${profile.link || '#'}', '_blank')" 
+                                        class="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg text-sm font-medium transition-colors">
+                                    <i class="fab fa-linkedin mr-2"></i>Ver Perfil
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // Apify-specific functions
+        function toggleApifyFilter(filterId) {
+            const filterContent = document.getElementById(filterId);
+            const icon = document.getElementById(filterId + '-icon');
+            const isActive = filterContent.classList.contains('active');
+            
+            if (isActive) {
+                filterContent.classList.remove('active');
+                icon.classList.remove('fa-chevron-up');
+                icon.classList.add('fa-chevron-down');
+                filterContent.parentElement.querySelector('[role="button"]').setAttribute('aria-expanded', 'false');
+            } else {
+                filterContent.classList.add('active');
+                icon.classList.remove('fa-chevron-down');
+                icon.classList.add('fa-chevron-up');
+                filterContent.parentElement.querySelector('[role="button"]').setAttribute('aria-expanded', 'true');
+            }
+        }
+
+        function validateApifyForm() {
+            const token = document.getElementById('apify-token').value.trim();
+            const keywords = document.getElementById('apify-keywords').value.trim();
+            let isValid = true;
+            let errorMessages = [];
+
+            // Clear previous errors
+            clearMessages('apify-error-container');
+            removeFieldError('apify-token');
+            removeFieldError('apify-keywords');
+
+            // Validate required token field
+            if (!token) {
+                errorMessages.push('O token da API Apify é obrigatório.');
+                addFieldError('apify-token');
+                isValid = false;
+            }
+
+            // Validate required keywords field
+            if (!keywords) {
+                errorMessages.push('O campo "Palavras-chave" é obrigatório para realizar a busca.');
+                addFieldError('apify-keywords');
+                isValid = false;
+            } else if (keywords.length < 2) {
+                errorMessages.push('As palavras-chave devem ter pelo menos 2 caracteres.');
+                addFieldError('apify-keywords');
+                isValid = false;
+            }
+
+            // Show error messages if validation failed
+            if (!isValid) {
+                const errorHtml = errorMessages.map(msg => 
+                    `<div class="error-message">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        ${msg}
+                    </div>`
+                ).join('');
+                document.getElementById('apify-error-container').innerHTML = errorHtml;
+            }
+
+            return isValid;
+        }
+
+        function clearApifyFilters() {
+            // Clear all form inputs except token
+            document.getElementById('apify-keywords').value = '';
+            document.getElementById('apify-location').value = '';
+            document.getElementById('apify-company').value = '';
+            document.getElementById('apify-industry').value = '';
+            document.getElementById('apify-seniority').value = '';
+            document.getElementById('apify-function').value = '';
+            document.getElementById('apify-connections').value = '';
+            document.getElementById('apify-school').value = '';
+
+            // Clear results
+            document.getElementById('apify-profiles-grid').innerHTML = '';
+            document.getElementById('apify-results-counter').classList.add('hidden');
+            document.getElementById('apify-export-section').classList.add('hidden');
+            document.getElementById('no-apify-results').classList.add('hidden');
+            document.getElementById('apify-status').classList.add('hidden');
+
+            // Clear messages
+            clearMessages('apify-error-container');
+        }
+
+        async function searchApifyProfiles() {
+            // Validate form before proceeding
+            if (!validateApifyForm()) {
+                return;
+            }
+
+            const token = document.getElementById('apify-token').value.trim();
+            const keywords = document.getElementById('apify-keywords').value.trim();
+            const location = document.getElementById('apify-location').value.trim();
+            const company = document.getElementById('apify-company').value.trim();
+            const maxProfiles = parseInt(document.getElementById('max-profiles').value);
+
+            // Show loading and status
+            const loadingSpinner = document.getElementById('apify-search-loading');
+            const statusDiv = document.getElementById('apify-status');
+            const statusText = document.getElementById('apify-status-text');
+            const progressBar = document.getElementById('apify-progress');
+
+            loadingSpinner.classList.remove('hidden');
+            statusDiv.classList.remove('hidden');
+            clearMessages('apify-error-container');
+
+            try {
+                // Prepare actor input
+                const actorInput = {
+                    searchKeywords: keywords,
+                    maxProfiles: maxProfiles,
+                    ...(location && { location: location }),
+                    ...(company && { company: company })
+                };
+
+                statusText.textContent = 'Iniciando execução do Apify...';
+                progressBar.style.width = '10%';
+
+                // Start the actor run
+                const runResponse = await fetch(`https://api.apify.com/v2/acts/curious_coder~linkedin-profile-scraper/runs?token=${token}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(actorInput)
+                });
+
+                if (!runResponse.ok) {
+                    throw new Error(`Erro ao iniciar execução: ${runResponse.status} ${runResponse.statusText}`);
+                }
+
+                const runData = await runResponse.json();
+                const runId = runData.data.id;
+
+                statusText.textContent = 'Execução iniciada, aguardando resultados...';
+                progressBar.style.width = '30%';
+
+                // Poll for completion
+                await pollApifyRun(token, runId);
+
+            } catch (error) {
+                console.error('Erro na busca Apify:', error);
+                showError('apify-error-container', `Erro na execução: ${error.message}`);
+                loadingSpinner.classList.add('hidden');
+                statusDiv.classList.add('hidden');
+            }
+        }
+
+        async function pollApifyRun(token, runId) {
+            const statusText = document.getElementById('apify-status-text');
+            const progressBar = document.getElementById('apify-progress');
+            const loadingSpinner = document.getElementById('apify-search-loading');
+            const statusDiv = document.getElementById('apify-status');
+
+            let attempts = 0;
+            const maxAttempts = 60; // 5 minutes maximum
+
+            const pollInterval = setInterval(async () => {
+                attempts++;
+                
+                try {
+                    const statusResponse = await fetch(`https://api.apify.com/v2/actor-runs/${runId}?token=${token}`);
+                    
+                    if (!statusResponse.ok) {
+                        throw new Error(`Erro ao verificar status: ${statusResponse.status}`);
+                    }
+
+                    const statusData = await statusResponse.json();
+                    const status = statusData.data.status;
+
+                    if (status === 'SUCCEEDED') {
+                        clearInterval(pollInterval);
+                        statusText.textContent = 'Execução concluída! Carregando resultados...';
+                        progressBar.style.width = '90%';
+                        
+                        await fetchApifyResults(token, runId);
+                        
+                        loadingSpinner.classList.add('hidden');
+                        statusDiv.classList.add('hidden');
+                        
+                    } else if (status === 'FAILED' || status === 'ABORTED' || status === 'TIMED-OUT') {
+                        clearInterval(pollInterval);
+                        throw new Error(`Execução falhou com status: ${status}`);
+                        
+                    } else if (attempts >= maxAttempts) {
+                        clearInterval(pollInterval);
+                        throw new Error('Timeout: A execução demorou mais que o esperado');
+                        
+                    } else {
+                        // Still running
+                        const progress = Math.min(30 + (attempts * 2), 80);
+                        progressBar.style.width = `${progress}%`;
+                        statusText.textContent = `Executando... (${attempts}/${maxAttempts})`;
+                    }
+                    
+                } catch (error) {
+                    clearInterval(pollInterval);
+                    console.error('Erro no polling:', error);
+                    showError('apify-error-container', `Erro no monitoramento: ${error.message}`);
+                    loadingSpinner.classList.add('hidden');
+                    statusDiv.classList.add('hidden');
+                }
+            }, 5000); // Poll every 5 seconds
+        }
+
+        async function fetchApifyResults(token, runId) {
+            try {
+                const resultsResponse = await fetch(`https://api.apify.com/v2/datasets/${runId}/items?token=${token}`);
+                
+                if (!resultsResponse.ok) {
+                    throw new Error(`Erro ao buscar resultados: ${resultsResponse.status}`);
+                }
+
+                const results = await resultsResponse.json();
+                
+                if (results && results.length > 0) {
+                    displayApifyProfiles(results);
+                    
+                    // Show results counter and export options
+                    document.getElementById('apify-results-count').textContent = results.length;
+                    document.getElementById('apify-results-counter').classList.remove('hidden');
+                    document.getElementById('apify-export-section').classList.remove('hidden');
+                    document.getElementById('no-apify-results').classList.add('hidden');
+                    
+                    // Store results for export
+                    window.apifyResults = results;
+                    
+                    showSuccess('apify-error-container', `Busca concluída! ${results.length} perfis encontrados via Apify.`);
+                    setTimeout(() => {
+                        clearMessages('apify-error-container');
+                    }, 5000);
+                    
+                } else {
+                    document.getElementById('apify-profiles-grid').innerHTML = '';
+                    document.getElementById('apify-results-counter').classList.add('hidden');
+                    document.getElementById('apify-export-section').classList.add('hidden');
+                    document.getElementById('no-apify-results').classList.remove('hidden');
+                }
+                
+            } catch (error) {
+                console.error('Erro ao buscar resultados:', error);
+                showError('apify-error-container', `Erro ao carregar resultados: ${error.message}`);
+            }
+        }
+
+        function displayApifyProfiles(profiles) {
+            const profilesGrid = document.getElementById('apify-profiles-grid');
+            
+            profilesGrid.innerHTML = profiles.map(profile => `
+                <div class="card bg-white border border-gray-200 rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-all cursor-pointer">
+                    <div class="p-6">
+                        <div class="flex items-center mb-4">
+                            <div class="w-16 h-16 rounded-full bg-purple-100 flex items-center justify-center border-2 border-purple-200">
+                                <i class="fas fa-user text-purple-600 text-xl"></i>
+                            </div>
+                            <div class="ml-4 flex-1">
+                                <h4 class="font-bold text-lg text-gray-900 mb-1">${profile.name || 'Nome não disponível'}</h4>
+                                <p class="text-purple-600 font-medium text-sm">${profile.title || profile.headline || 'Cargo não disponível'}</p>
+                            </div>
+                        </div>
+                        
+                        <div class="space-y-3 text-sm text-gray-600">
+                            ${profile.company ? `
+                                <div class="flex items-center">
+                                    <i class="fas fa-building mr-3 text-blue-500 w-4"></i>
+                                    <span>${profile.company}${profile.location ? ` • ${profile.location}` : ''}</span>
+                                </div>
+                            ` : ''}
+                            
+                            ${profile.connections ? `
+                                <div class="flex items-center">
+                                    <i class="fas fa-users mr-3 text-green-500 w-4"></i>
+                                    <span>${profile.connections} conexões</span>
+                                </div>
+                            ` : ''}
+                            
+                            ${profile.summary ? `
+                                <div class="flex items-start">
+                                    <i class="fas fa-info-circle mr-3 text-gray-500 w-4 mt-1"></i>
+                                    <p class="text-xs text-gray-600 line-clamp-3">${profile.summary.substring(0, 120)}${profile.summary.length > 120 ? '...' : ''}</p>
+                                </div>
+                            ` : ''}
+                        </div>
+                        
+                        <div class="mt-4 pt-4 border-t border-gray-100">
+                            <button class="w-full bg-purple-600 hover:bg-purple-700 text-white py-2 px-4 rounded-lg text-sm font-medium transition-colors" onclick="window.open('${profile.linkedinUrl || profile.url || '#'}', '_blank')">
+                                <i class="fab fa-linkedin mr-2"></i>Ver Perfil no LinkedIn
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function exportApifyResults(format) {
+            if (!window.apifyResults || window.apifyResults.length === 0) {
+                showError('apify-error-container', 'Nenhum resultado disponível para exportar.');
+                return;
+            }
+
+            const results = window.apifyResults;
+            const timestamp = new Date().toISOString().slice(0, 19).replace(/:/g, '-');
+            const filename = `linkedin-profiles-apify-${timestamp}`;
+
+            try {
+                if (format === 'csv') {
+                    exportToCSV(results, filename);
+                } else if (format === 'excel') {
+                    exportToExcel(results, filename);
+                } else if (format === 'json') {
+                    exportToJSON(results, filename);
+                }
+                
+                showSuccess('apify-error-container', `Arquivo ${format.toUpperCase()} exportado com sucesso!`);
+                setTimeout(() => {
+                    clearMessages('apify-error-container');
+                }, 3000);
+                
+            } catch (error) {
+                console.error('Erro na exportação:', error);
+                showError('apify-error-container', `Erro ao exportar arquivo: ${error.message}`);
+            }
+        }
+
+        function exportToCSV(data, filename) {
+            const headers = ['Nome', 'Título', 'Empresa', 'Localização', 'Conexões', 'URL LinkedIn', 'Resumo'];
+            const csvContent = [
+                headers.join(','),
+                ...data.map(profile => [
+                    `"${(profile.name || '').replace(/"/g, '""')}"`,
+                    `"${(profile.title || profile.headline || '').replace(/"/g, '""')}"`,
+                    `"${(profile.company || '').replace(/"/g, '""')}"`,
+                    `"${(profile.location || '').replace(/"/g, '""')}"`,
+                    `"${(profile.connections || '').replace(/"/g, '""')}"`,
+                    `"${(profile.linkedinUrl || profile.url || '').replace(/"/g, '""')}"`,
+                    `"${(profile.summary || '').replace(/"/g, '""').substring(0, 200)}"`
+                ].join(','))
+            ].join('\n');
+
+            downloadFile(csvContent, `${filename}.csv`, 'text/csv');
+        }
+
+        function exportToJSON(data, filename) {
+            const jsonContent = JSON.stringify(data, null, 2);
+            downloadFile(jsonContent, `${filename}.json`, 'application/json');
+        }
+
+        function exportToExcel(data, filename) {
+            // Simple Excel export using HTML table format
+            const headers = ['Nome', 'Título', 'Empresa', 'Localização', 'Conexões', 'URL LinkedIn', 'Resumo'];
+            const excelContent = `
+                <table>
+                    <tr>${headers.map(h => `<th>${h}</th>`).join('')}</tr>
+                    ${data.map(profile => `
+                        <tr>
+                            <td>${profile.name || ''}</td>
+                            <td>${profile.title || profile.headline || ''}</td>
+                            <td>${profile.company || ''}</td>
+                            <td>${profile.location || ''}</td>
+                            <td>${profile.connections || ''}</td>
+                            <td>${profile.linkedinUrl || profile.url || ''}</td>
+                            <td>${(profile.summary || '').substring(0, 200)}</td>
+                        </tr>
+                    `).join('')}
+                </table>
+            `;
+
+            downloadFile(excelContent, `${filename}.xls`, 'application/vnd.ms-excel');
+        }
+
+        function downloadFile(content, filename, mimeType) {
+            const blob = new Blob([content], { type: mimeType });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            window.URL.revokeObjectURL(url);
+        }
+
+        // Function to show score details in a modal
+        function showScoreDetails(profileId, classification, explanations) {
+            const modal = document.createElement('div');
+            modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
+            modal.innerHTML = `
+                <div class="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-lg font-semibold text-gray-900">Detalhes do Score</h3>
+                        <button onclick="this.closest('.fixed').remove()" class="text-gray-400 hover:text-gray-600">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    <div class="mb-4">
+                        <p class="text-sm text-gray-600 mb-2">Perfil: <span class="font-medium">${profileId}</span></p>
+                        <p class="text-sm text-gray-600 mb-4">Classificação: <span class="font-medium">${classification}</span></p>
+                        <h4 class="font-medium text-gray-900 mb-2">Fatores que influenciaram o score:</h4>
+                        <ul class="space-y-1">
+                            ${explanations.map(exp => `<li class="text-sm text-gray-700">• ${exp}</li>`).join('')}
+                        </ul>
+                    </div>
+                    <div class="text-xs text-gray-500 bg-gray-50 p-3 rounded">
+                        <p><strong>Como funciona:</strong> O score é calculado usando machine learning, considerando similaridade com palavras-chave, senioridade, experiência, empresa relevante, localização no Brasil e certificações.</p>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+        }
+
+        // Function to sort profiles by score
+        function sortProfilesByScore() {
+            const profilesGrid = document.getElementById('profiles-grid');
+            const profiles = Array.from(profilesGrid.children);
+            
+            profiles.sort((a, b) => {
+                const scoreA = parseFloat(a.querySelector('.font-bold.text-lg')?.textContent?.replace('%', '') || 0);
+                const scoreB = parseFloat(b.querySelector('.font-bold.text-lg')?.textContent?.replace('%', '') || 0);
+                return scoreB - scoreA; // Sort descending
+            });
+            
+            profiles.forEach(profile => profilesGrid.appendChild(profile));
+        }
+
+        // Add sorting controls
+        function addSortingControls() {
+            const resultsCounter = document.getElementById('results-counter');
+            if (resultsCounter && !document.getElementById('sort-controls')) {
+                const sortControls = document.createElement('div');
+                sortControls.id = 'sort-controls';
+                sortControls.className = 'mt-4 text-center';
+                sortControls.innerHTML = `
+                    <div class="inline-flex items-center space-x-4 bg-gray-50 rounded-lg p-3">
+                        <span class="text-sm font-medium text-gray-700">Ordenar por:</span>
+                        <button onclick="sortProfilesByScore()" 
+                                class="text-sm bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded transition-colors">
+                            <i class="fas fa-sort-amount-down mr-1"></i>Score (maior primeiro)
+                        </button>
+                        <button onclick="location.reload()" 
+                                class="text-sm bg-gray-600 hover:bg-gray-700 text-white px-3 py-1 rounded transition-colors">
+                            <i class="fas fa-undo mr-1"></i>Ordem original
+                        </button>
+                    </div>
+                `;
+                resultsCounter.parentNode.insertBefore(sortControls, resultsCounter.nextSibling);
+            }
+        }
+
+        // Enhanced profile display with scoring
+        function displayProfilesWithScoring(profiles) {
+            displayProfiles(profiles);
+            
+            // Add sorting controls if profiles have scores
+            const hasScores = profiles.some(p => p.score !== undefined);
+            if (hasScores) {
+                addSortingControls();
+                
+                // Show score distribution summary
+                showScoreDistribution(profiles);
+            }
+        }
+
+        // Function to show score distribution
+        function showScoreDistribution(profiles) {
+            const profilesWithScores = profiles.filter(p => p.score !== undefined);
+            if (profilesWithScores.length === 0) return;
+            
+            const high = profilesWithScores.filter(p => p.color_class === 'high').length;
+            const medium = profilesWithScores.filter(p => p.color_class === 'medium').length;
+            const low = profilesWithScores.filter(p => p.color_class === 'low').length;
+            
+            const distributionDiv = document.createElement('div');
+            distributionDiv.className = 'mt-4 bg-blue-50 border border-blue-200 rounded-lg p-4';
+            distributionDiv.innerHTML = `
+                <h4 class="font-semibold text-blue-900 mb-3 flex items-center">
+                    <i class="fas fa-chart-bar mr-2"></i>Distribuição de Relevância
+                </h4>
+                <div class="grid grid-cols-3 gap-4 text-center">
+                    <div class="bg-green-100 rounded-lg p-3">
+                        <div class="text-2xl font-bold text-green-600">${high}</div>
+                        <div class="text-sm text-green-700">Alta Relevância</div>
+                        <div class="text-xs text-green-600">(≥85%)</div>
+                    </div>
+                    <div class="bg-yellow-100 rounded-lg p-3">
+                        <div class="text-2xl font-bold text-yellow-600">${medium}</div>
+                        <div class="text-sm text-yellow-700">Relevância Moderada</div>
+                        <div class="text-xs text-yellow-600">(60-84%)</div>
+                    </div>
+                    <div class="bg-red-100 rounded-lg p-3">
+                        <div class="text-2xl font-bold text-red-600">${low}</div>
+                        <div class="text-sm text-red-700">Baixa Relevância</div>
+                        <div class="text-xs text-red-600">(<60%)</div>
+                    </div>
+                </div>
+            `;
+            
+            const resultsCounter = document.getElementById('results-counter');
+            if (resultsCounter && !document.getElementById('score-distribution')) {
+                distributionDiv.id = 'score-distribution';
+                resultsCounter.parentNode.insertBefore(distributionDiv, resultsCounter.nextSibling);
+            }
+        }
+
+        // Update the main search function to use enhanced display
+        function searchLinkedinProfiles() {
+            // Validate form before proceeding (shows warning but allows search)
+            validateLinkedinForm();
+
+            const loadingSpinner = document.getElementById('search-loading');
+            const resultsCounter = document.getElementById('results-counter');
+            const resultsCount = document.getElementById('results-count');
+            const profilesGrid = document.getElementById('profiles-grid');
+            const noResults = document.getElementById('no-linkedin-results');
+
+            // Show loading
+            loadingSpinner.classList.remove('hidden');
+
+            // Clear previous results and controls
+            document.getElementById('sort-controls')?.remove();
+            document.getElementById('score-distribution')?.remove();
+
+            // Collect form data
+            const formData = collectLinkedinFormData();
+
+            // Simulate search delay
+            setTimeout(() => {
+                loadingSpinner.classList.add('hidden');
+
+                // Generate mock results based on form data
+                const mockResults = generateMockLinkedinResults(formData);
+
+                // Display results with scoring
+                if (mockResults.length > 0) {
+                    displayProfilesWithScoring(mockResults);
+                    resultsCount.textContent = mockResults.length;
+                    resultsCounter.classList.remove('hidden');
+                    noResults.classList.add('hidden');
+                    
+                    // Show success message if search was successful
+                    setTimeout(() => {
+                        clearMessages('linkedin-error-container');
+                        const hasScores = mockResults.some(p => p.score !== undefined);
+                        const message = hasScores 
+                            ? `Busca concluída! ${mockResults.length} perfis encontrados e pontuados por relevância.`
+                            : `Busca concluída! ${mockResults.length} perfis encontrados.`;
+                        showSuccess('linkedin-error-container', message);
+                        setTimeout(() => {
+                            clearMessages('linkedin-error-container');
+                        }, 5000);
+                    }, 500);
+                } else {
+                    profilesGrid.innerHTML = '';
+                    resultsCounter.classList.add('hidden');
+                    noResults.classList.remove('hidden');
+                }
+            }, 1500);
+        }
+
+        // Initialize with some default profiles on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            // Auto-expand primary filters for better UX
+            const primaryFilters = document.getElementById('primary-filters');
+            if (primaryFilters) {
+                primaryFilters.classList.add('active');
+            }
+            
+            // Add info about scoring system
+            const infoDiv = document.createElement('div');
+            infoDiv.className = 'mt-4 bg-blue-50 border-l-4 border-blue-500 p-4 rounded-r-lg';
+            infoDiv.innerHTML = `
+                <div class="flex items-start">
+                    <i class="fas fa-info-circle text-blue-500 mr-3 mt-1"></i>
+                    <div>
+                        <h4 class="font-semibold text-blue-900 mb-2">Sistema de Scoring Inteligente</h4>
+                        <p class="text-sm text-blue-800 mb-2">
+                            Os perfis são automaticamente pontuados por relevância usando machine learning, 
+                            considerando fatores como similaridade com palavras-chave, senioridade, experiência 
+                            e localização no Brasil.
+                        </p>
+                        <div class="flex items-center space-x-4 text-xs">
+                            <div class="flex items-center">
+                                <div class="w-3 h-3 bg-green-500 rounded-full mr-1"></div>
+                                <span>Alta (≥85%)</span>
+                            </div>
+                            <div class="flex items-center">
+                                <div class="w-3 h-3 bg-yellow-500 rounded-full mr-1"></div>
+                                <span>Moderada (60-84%)</span>
+                            </div>
+                            <div class="flex items-center">
+                                <div class="w-3 h-3 bg-red-500 rounded-full mr-1"></div>
+                                <span>Baixa (<60%)</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            // Add to LinkedIn tab
+            const linkedinContent = document.getElementById('linkedin-content');
+            if (linkedinContent) {
+                const searchButton = document.getElementById('search-linkedin');
+                searchButton.parentNode.insertBefore(infoDiv, searchButton.nextSibling);
+            }
+        });
+    </script>
+</body>
+</html>

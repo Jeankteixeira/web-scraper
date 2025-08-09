@@ -210,9 +210,22 @@
                 </div>
 
                 <div id="academic-error-container"></div>
-                <button id="search-academic" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg transition" onclick="searchAcademicArticles()">
-                    Buscar Artigos
-                </button>
+                
+                <!-- Botões de ação -->
+                <div class="flex gap-4 mt-6">
+                    <button id="search-academic" 
+                            class="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-3 px-6 rounded-lg transition-all font-medium flex items-center justify-center"
+                            onclick="searchAcademicArticles()">
+                        <i class="fas fa-search mr-2"></i>
+                        Buscar Artigos
+                    </button>
+                    <button id="clear-academic-filters" 
+                            class="flex-1 bg-gray-500 hover:bg-gray-600 text-white py-3 px-6 rounded-lg transition-all font-medium flex items-center justify-center"
+                            onclick="clearAcademicFilters()">
+                        <i class="fas fa-eraser mr-2"></i>
+                        Limpar Filtros
+                    </button>
+                </div>
                 <div id="academic-list" class="mt-6 space-y-4">
                     <!-- Resultados simulados - apenas fontes gratuitas -->
                     <div class="card p-4 border border-gray-200 rounded-lg">
@@ -368,20 +381,20 @@
                 
                 <!-- Botões de ação -->
                 <div class="flex gap-4 mt-6">
-                    <button id="clear-linkedin-filters" 
-                            class="flex-1 bg-gray-500 hover:bg-gray-600 text-white py-3 px-6 rounded-lg transition-all font-medium flex items-center justify-center"
-                            onclick="clearLinkedinFilters()">
-                        <i class="fas fa-eraser mr-2"></i>
-                        Limpar Filtros
-                    </button>
                     <button id="search-linkedin" 
-                            class="flex-2 bg-blue-600 hover:bg-blue-700 text-white py-3 px-6 rounded-lg transition-all font-medium flex items-center justify-center"
+                            class="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-3 px-6 rounded-lg transition-all font-medium flex items-center justify-center"
                             onclick="searchLinkedinProfiles()">
                         <i class="fas fa-search mr-2"></i>
                         Buscar Perfis
                         <span id="search-loading" class="hidden ml-2">
                             <i class="fas fa-spinner fa-spin"></i>
                         </span>
+                    </button>
+                    <button id="clear-linkedin-filters" 
+                            class="flex-1 bg-gray-500 hover:bg-gray-600 text-white py-3 px-6 rounded-lg transition-all font-medium flex items-center justify-center"
+                            onclick="clearLinkedinFilters()">
+                        <i class="fas fa-eraser mr-2"></i>
+                        Limpar Filtros
                     </button>
                 </div>
 
@@ -501,7 +514,7 @@
                          onkeypress="if(event.key==='Enter') toggleApifyFilter('apify-advanced-filters')">
                         <span class="flex items-center">
                             <i class="fas fa-sliders-h mr-2 text-gray-600"></i>
-                            <span class="font-semibold text-gray-700">Filtros Avançados</span>
+                            <span class="font-semibold text-gray-700">Filtros Secundários</span>
                         </span>
                         <i id="apify-advanced-filters-icon" class="fas fa-chevron-down text-gray-500 transition-transform"></i>
                     </div>
@@ -583,20 +596,20 @@
                 
                 <!-- Botões de ação -->
                 <div class="flex gap-4 mt-6">
-                    <button id="clear-apify-filters" 
-                            class="flex-1 bg-gray-500 hover:bg-gray-600 text-white py-3 px-6 rounded-lg transition-all font-medium flex items-center justify-center"
-                            onclick="clearApifyFilters()">
-                        <i class="fas fa-eraser mr-2"></i>
-                        Limpar Filtros
-                    </button>
                     <button id="search-apify" 
-                            class="flex-2 bg-purple-600 hover:bg-purple-700 text-white py-3 px-6 rounded-lg transition-all font-medium flex items-center justify-center"
+                            class="flex-1 bg-purple-600 hover:bg-purple-700 text-white py-3 px-6 rounded-lg transition-all font-medium flex items-center justify-center"
                             onclick="searchApifyProfiles()">
                         <i class="fas fa-robot mr-2"></i>
                         Buscar com Apify
                         <span id="apify-search-loading" class="hidden ml-2">
                             <i class="fas fa-spinner fa-spin"></i>
                         </span>
+                    </button>
+                    <button id="clear-apify-filters" 
+                            class="flex-1 bg-gray-500 hover:bg-gray-600 text-white py-3 px-6 rounded-lg transition-all font-medium flex items-center justify-center"
+                            onclick="clearApifyFilters()">
+                        <i class="fas fa-eraser mr-2"></i>
+                        Limpar Filtros
                     </button>
                 </div>
 
@@ -1146,6 +1159,99 @@
             updateSelectedCertifications();
         }
 
+        function clearAcademicFilters() {
+            // Clear all form inputs
+            document.getElementById('academic-keywords').value = '';
+            document.getElementById('publication-year').value = '';
+            document.getElementById('data-source').value = '';
+            document.getElementById('authors').value = '';
+            document.getElementById('language').value = '';
+            document.getElementById('knowledge-area').value = '';
+            document.getElementById('affiliated-institution').value = '';
+            document.getElementById('author-country').value = '';
+
+            // Clear any error messages
+            clearMessages('academic-error-container');
+            removeFieldError('academic-keywords');
+
+            // Clear results
+            document.getElementById('academic-list').innerHTML = `
+                <!-- Resultados simulados - apenas fontes gratuitas -->
+                <div class="card p-4 border border-gray-200 rounded-lg">
+                    <h4 class="font-medium text-blue-600">Hyperledger Besu: An Enterprise Ethereum Client <span class="badge">Acesso Gratuito</span></h4>
+                    <p class="text-sm text-gray-500">Autores: John Doe, Jane Smith</p>
+                    <p class="text-sm text-gray-500">Ano: 2022 | Fonte: <span class="text-green-600 font-medium">arXiv</span></p>
+                    <p class="text-gray-700 mt-2">An in-depth analysis of Hyperledger Besu architecture and its applications in private blockchain networks...</p>
+                </div>
+                <div class="card p-4 border border-gray-200 rounded-lg">
+                    <h4 class="font-medium text-blue-600">Enterprise Blockchain Adoption Patterns</h4>
+                    <p class="text-sm text-gray-500">Autores: Alice Johnson, Bob Brown</p>
+                    <p class="text-sm text-gray-500">Ano: 2023 | Fonte: <span class="text-green-600 font-medium">Google Scholar</span></p>
+                    <p class="text-gray-700 mt-2">Comparative study of blockchain adoption across different industries with case studies...</p>
+                </div>
+                <div class="card p-4 border border-gray-200 rounded-lg">
+                    <h4 class="font-medium text-blue-600">Análise de Algoritmos de Machine Learning em Saúde Pública</h4>
+                    <p class="text-sm text-gray-500">Autores: Maria Silva, Carlos Santos</p>
+                    <p class="text-sm text-gray-500">Ano: 2023 | Fonte: <span class="text-green-600 font-medium">SciELO</span></p>
+                    <p class="text-gray-700 mt-2">Estudo comparativo de algoritmos de aprendizado de máquina aplicados em dados de saúde pública brasileira...</p>
+                </div>
+                <div class="card p-4 border border-gray-200 rounded-lg">
+                    <h4 class="font-medium text-blue-600">Distributed Systems and Consensus Algorithms</h4>
+                    <p class="text-sm text-gray-500">Autores: Robert Johnson, Lisa Chen</p>
+                    <p class="text-sm text-gray-500">Ano: 2022 | Fonte: <span class="text-green-600 font-medium">DBLP</span></p>
+                    <p class="text-gray-700 mt-2">Comprehensive survey of consensus algorithms in distributed computing systems with performance analysis...</p>
+                </div>
+                <div id="no-academic-results" class="hidden text-gray-500 mt-4">Nenhum artigo encontrado para esses termos.</div>
+            `;
+            document.getElementById('no-academic-results').classList.add('hidden');
+        }
+
+        function clearAcademicFilters() {
+            // Clear all form inputs
+            document.getElementById('academic-keywords').value = '';
+            document.getElementById('publication-year').value = '';
+            document.getElementById('data-source').value = '';
+            document.getElementById('authors').value = '';
+            document.getElementById('language').value = '';
+            document.getElementById('knowledge-area').value = '';
+            document.getElementById('affiliated-institution').value = '';
+            document.getElementById('author-country').value = '';
+
+            // Clear error messages
+            clearMessages('academic-error-container');
+            removeFieldError('academic-keywords');
+
+            // Clear results
+            document.getElementById('academic-list').innerHTML = `
+                <!-- Resultados simulados - apenas fontes gratuitas -->
+                <div class="card p-4 border border-gray-200 rounded-lg">
+                    <h4 class="font-medium text-blue-600">Hyperledger Besu: An Enterprise Ethereum Client <span class="badge">Acesso Gratuito</span></h4>
+                    <p class="text-sm text-gray-500">Autores: John Doe, Jane Smith</p>
+                    <p class="text-sm text-gray-500">Ano: 2022 | Fonte: <span class="text-green-600 font-medium">arXiv</span></p>
+                    <p class="text-gray-700 mt-2">An in-depth analysis of Hyperledger Besu architecture and its applications in private blockchain networks...</p>
+                </div>
+                <div class="card p-4 border border-gray-200 rounded-lg">
+                    <h4 class="font-medium text-blue-600">Enterprise Blockchain Adoption Patterns</h4>
+                    <p class="text-sm text-gray-500">Autores: Alice Johnson, Bob Brown</p>
+                    <p class="text-sm text-gray-500">Ano: 2023 | Fonte: <span class="text-green-600 font-medium">Google Scholar</span></p>
+                    <p class="text-gray-700 mt-2">Comparative study of blockchain adoption across different industries with case studies...</p>
+                </div>
+                <div class="card p-4 border border-gray-200 rounded-lg">
+                    <h4 class="font-medium text-blue-600">Análise de Algoritmos de Machine Learning em Saúde Pública</h4>
+                    <p class="text-sm text-gray-500">Autores: Maria Silva, Carlos Santos</p>
+                    <p class="text-sm text-gray-500">Ano: 2023 | Fonte: <span class="text-green-600 font-medium">SciELO</span></p>
+                    <p class="text-gray-700 mt-2">Estudo comparativo de algoritmos de aprendizado de máquina aplicados em dados de saúde pública brasileira...</p>
+                </div>
+                <div class="card p-4 border border-gray-200 rounded-lg">
+                    <h4 class="font-medium text-blue-600">Distributed Systems and Consensus Algorithms</h4>
+                    <p class="text-sm text-gray-500">Autores: Robert Johnson, Lisa Chen</p>
+                    <p class="text-sm text-gray-500">Ano: 2022 | Fonte: <span class="text-green-600 font-medium">DBLP</span></p>
+                    <p class="text-gray-700 mt-2">Comprehensive survey of consensus algorithms in distributed computing systems with performance analysis...</p>
+                </div>
+                <div id="no-academic-results" class="hidden text-gray-500 mt-4">Nenhum artigo encontrado para esses termos.</div>
+            `;
+        }
+
         function clearLinkedinFilters() {
             // Clear all form inputs
             document.getElementById('linkedin-keywords').value = '';
@@ -1180,6 +1286,22 @@
             document.getElementById('profiles-grid').innerHTML = '';
             document.getElementById('results-counter').classList.add('hidden');
             document.getElementById('no-linkedin-results').classList.add('hidden');
+        }
+
+        function clearAcademicFilters() {
+            // Clear all form inputs in Academic tab
+            document.getElementById('academic-keywords').value = '';
+            document.getElementById('publication-year').selectedIndex = 0;
+            document.getElementById('data-source').selectedIndex = 0;
+            document.getElementById('authors').value = '';
+            document.getElementById('language').selectedIndex = 0;
+            document.getElementById('knowledge-area').selectedIndex = 0;
+            document.getElementById('affiliated-institution').value = '';
+            document.getElementById('author-country').selectedIndex = 0;
+
+            // Clear results
+            document.getElementById('academic-list').innerHTML = '';
+            document.getElementById('academic-error-container').innerHTML = '';
         }
 
         function searchLinkedinProfiles() {
@@ -2123,44 +2245,6 @@
             const primaryFilters = document.getElementById('primary-filters');
             if (primaryFilters) {
                 primaryFilters.classList.add('active');
-            }
-            
-            // Add info about scoring system
-            const infoDiv = document.createElement('div');
-            infoDiv.className = 'mt-4 bg-blue-50 border-l-4 border-blue-500 p-4 rounded-r-lg';
-            infoDiv.innerHTML = `
-                <div class="flex items-start">
-                    <i class="fas fa-info-circle text-blue-500 mr-3 mt-1"></i>
-                    <div>
-                        <h4 class="font-semibold text-blue-900 mb-2">Sistema de Scoring Inteligente</h4>
-                        <p class="text-sm text-blue-800 mb-2">
-                            Os perfis são automaticamente pontuados por relevância usando machine learning, 
-                            considerando fatores como similaridade com palavras-chave, senioridade, experiência 
-                            e localização no Brasil.
-                        </p>
-                        <div class="flex items-center space-x-4 text-xs">
-                            <div class="flex items-center">
-                                <div class="w-3 h-3 bg-green-500 rounded-full mr-1"></div>
-                                <span>Alta (≥85%)</span>
-                            </div>
-                            <div class="flex items-center">
-                                <div class="w-3 h-3 bg-yellow-500 rounded-full mr-1"></div>
-                                <span>Moderada (60-84%)</span>
-                            </div>
-                            <div class="flex items-center">
-                                <div class="w-3 h-3 bg-red-500 rounded-full mr-1"></div>
-                                <span>Baixa (<60%)</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            `;
-            
-            // Add to LinkedIn tab
-            const linkedinContent = document.getElementById('linkedin-content');
-            if (linkedinContent) {
-                const searchButton = document.getElementById('search-linkedin');
-                searchButton.parentNode.insertBefore(infoDiv, searchButton.nextSibling);
             }
         });
     </script>

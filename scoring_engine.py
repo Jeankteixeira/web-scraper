@@ -1,14 +1,16 @@
 import numpy as np
-import pandas as pd
 import re
-from typing import Dict, List, Tuple, Optional
-from sklearn.linear_model import LogisticRegression
-from sklearn.preprocessing import StandardScaler
-from sklearn.metrics.pairwise import cosine_similarity
-import pickle
-import logging
-from datetime import datetime
 import json
+import logging
+from typing import Dict, List, Optional
+from datetime import datetime
+from sklearn.metrics.pairwise import cosine_similarity
+
+from config import LINKEDIN_CONFIG, SCORING_CONFIG
+from utils import (
+    calculate_text_similarity, extract_years_from_experience, 
+    normalize_score, apply_sigmoid, create_timestamp, log_performance
+)
 
 # Try to import sentence-transformers, fallback to basic similarity if not available
 try:
@@ -16,70 +18,49 @@ try:
     EMBEDDINGS_AVAILABLE = True
 except ImportError:
     EMBEDDINGS_AVAILABLE = False
-    print("Warning: sentence-transformers not available. Using basic text similarity.")
+    logging.warning("sentence-transformers not available. Using basic text similarity.")
+
 
 class LinkedInProfileScorer:
     """
     LinkedIn Profile Scoring Engine for Brazilian professionals
     Uses ML-based features and logistic regression for relevance scoring
+    
+    Refactored for better performance and maintainability
     """
     
     def __init__(self, model_path: Optional[str] = None):
-        self.model = None
-        self.scaler = StandardScaler()
-        self.is_trained = False
-        self.feature_weights = {
-            'keyword_similarity': 2.5,
-            'seniority_score': 0.8,
-            'years_experience': 0.3,
-            'relevant_company': 1.0,
-            'brazil_indicator': 1.2,
-            'certifications_count': 0.5,
-            'skills_match': 1.5
-        }
-        self.bias = -5.0
+        self.feature_weights = SCORING_CONFIG['feature_weights'].copy()
+        self.bias = SCORING_CONFIG['bias']
+        self.score_thresholds = SCORING_CONFIG['score_thresholds']
+        self.classifications = SCORING_CONFIG['classifications']
+        
+        # Load configuration data
+        self.relevant_companies = LINKEDIN_CONFIG['relevant_companies']
+        self.seniority_mapping = LINKEDIN_CONFIG['seniority_mapping']
         
         # Initialize embedding model if available
-        if EMBEDDINGS_AVAILABLE:
-            try:
-                self.embedding_model = SentenceTransformer('paraphrase-multilingual-MiniLM-L12-v2')
-                print("Loaded multilingual embedding model for Portuguese/English support")
-            except Exception as e:
-                print(f"Warning: Could not load embedding model: {e}")
-                self.embedding_model = None
-        else:
-            self.embedding_model = None
-        
-        # Brazilian companies list (can be expanded)
-        self.relevant_companies = {
-            'nubank', 'ifood', 'stone', 'mercado livre', 'mercadolibre', 'globo',
-            'petrobras', 'vale', 'itau', 'bradesco', 'santander', 'banco do brasil',
-            'ambev', 'jbs', 'embraer', 'natura', 'magazine luiza', 'via varejo',
-            'b3', 'localiza', 'suzano', 'klabin', 'ultrapar', 'cosan',
-            'google', 'microsoft', 'amazon', 'meta', 'apple', 'netflix',
-            'uber', 'airbnb', 'spotify', 'linkedin', 'twitter', 'tesla'
-        }
-        
-        # Seniority mapping
-        self.seniority_mapping = {
-            'estagiario': 0, 'trainee': 0, 'intern': 0, 'internship': 0,
-            'junior': 1, 'jr': 1, 'entry': 1, 'associate': 1,
-            'pleno': 2, 'mid': 2, 'middle': 2, 'mid-level': 2,
-            'senior': 3, 'sr': 3, 'sênior': 3, 'mid-senior': 3,
-            'principal': 4, 'staff': 4, 'lead': 4, 'tech lead': 4,
-            'manager': 4, 'gerente': 4, 'coordenador': 4,
-            'director': 5, 'diretor': 5, 'head': 5, 'vp': 5,
-            'cto': 6, 'ceo': 6, 'founder': 6, 'co-founder': 6,
-            'president': 6, 'presidente': 6, 'executive': 5
-        }
+        self.embedding_model = self._initialize_embedding_model()
         
         # Setup logging
-        logging.basicConfig(level=logging.INFO)
         self.logger = logging.getLogger(__name__)
         
         # Load model if path provided
         if model_path:
             self.load_model(model_path)
+    
+    def _initialize_embedding_model(self) -> Optional[object]:
+        """Initialize sentence transformer model with error handling"""
+        if not EMBEDDINGS_AVAILABLE:
+            return None
+        
+        try:
+            model = SentenceTransformer('paraphrase-multilingual-MiniLM-L12-v2')
+            self.logger.info("Loaded multilingual embedding model for Portuguese/English support")
+            return model
+        except Exception as e:
+            self.logger.warning(f"Could not load embedding model: {e}")
+            return None
     
     def extract_features(self, profile: Dict, keywords: str) -> Dict[str, float]:
         """
@@ -148,17 +129,8 @@ class LinkedInProfileScorer:
         return self._basic_text_similarity(profile_text, keywords.lower())
     
     def _basic_text_similarity(self, text1: str, text2: str) -> float:
-        """Basic text similarity using word overlap"""
-        words1 = set(re.findall(r'\w+', text1.lower()))
-        words2 = set(re.findall(r'\w+', text2.lower()))
-        
-        if not words1 or not words2:
-            return 0.0
-        
-        intersection = len(words1.intersection(words2))
-        union = len(words1.union(words2))
-        
-        return intersection / union if union > 0 else 0.0
+        """Basic text similarity using utility function"""
+        return calculate_text_similarity(text1, text2)
     
     def _calculate_seniority_score(self, profile: Dict) -> float:
         """Map seniority level to normalized score (0-1)"""
@@ -174,24 +146,13 @@ class LinkedInProfileScorer:
         return max_seniority / 6.0
     
     def _normalize_experience(self, profile: Dict) -> float:
-        """Extract and normalize years of experience"""
-        experience = profile.get('experience', '')
+        """Extract and normalize years of experience using utility function"""
+        experience_data = extract_years_from_experience(profile.get('experience'))
+        years_avg = experience_data.get('years_avg', 0)
         
-        if isinstance(experience, str):
-            # Extract numbers from experience string
-            numbers = re.findall(r'\d+', experience)
-            if numbers:
-                years = int(numbers[0])
-                # Normalize to 0-1 scale (cap at 20 years)
-                return min(years / 20.0, 1.0)
-        
-        # Try to extract from experience range (e.g., "5-10")
-        if '-' in str(experience):
-            try:
-                start_year = int(str(experience).split('-')[0])
-                return min(start_year / 20.0, 1.0)
-            except:
-                pass
+        if years_avg:
+            # Normalize to 0-1 scale (cap at 20 years)
+            return normalize_score(years_avg / 20.0)
         
         return 0.0
     
@@ -206,20 +167,15 @@ class LinkedInProfileScorer:
         return 0.0
     
     def _check_brazil_location(self, profile: Dict) -> float:
-        """Check if profile indicates Brazilian location"""
+        """Check if profile indicates Brazilian location using config patterns"""
         location = profile.get('location', '').lower()
         
-        # Brazilian location indicators
-        brazil_indicators = [
-            'brasil', 'brazil', 'br', 'são paulo', 'rio de janeiro',
-            'belo horizonte', 'salvador', 'fortaleza', 'brasília',
-            'curitiba', 'recife', 'porto alegre', 'goiânia',
-            'belém', 'guarulhos', 'campinas', 'nova iguaçu',
-            'maceió', 'duque de caxias', 'natal', 'teresina'
-        ]
+        if not location:
+            return 0.0
         
-        for indicator in brazil_indicators:
-            if indicator in location:
+        # Use patterns from configuration
+        for pattern in LINKEDIN_CONFIG['brazil_patterns']:
+            if re.search(pattern, location, re.IGNORECASE):
                 return 1.0
         
         return 0.0
@@ -272,17 +228,17 @@ class LinkedInProfileScorer:
         ) + self.bias
         
         # Apply sigmoid function for 0-1 probability
-        score = 1 / (1 + np.exp(-weighted_sum))
+        score = apply_sigmoid(weighted_sum)
         
-        # Classify based on score thresholds
-        if score >= 0.85:
-            classification = "Alta relevância"
+        # Classify based on score thresholds from configuration
+        if score >= self.score_thresholds['high']:
+            classification = self.classifications['high']
             color_class = "high"
-        elif score >= 0.6:
-            classification = "Relevância moderada"
+        elif score >= self.score_thresholds['medium']:
+            classification = self.classifications['medium']
             color_class = "medium"
         else:
-            classification = "Baixa relevância"
+            classification = self.classifications['low']
             color_class = "low"
         
         # Log for audit

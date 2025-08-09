@@ -1,71 +1,56 @@
 import re
-import pandas as pd
-import numpy as np
-from typing import Dict, List, Optional, Tuple
-from datetime import datetime
 import logging
+from typing import Dict, List, Optional
+from datetime import datetime
+
+from config import LINKEDIN_CONFIG, TECH_CATEGORIES
+from utils import (
+    clean_text, standardize_list_field, extract_years_from_experience,
+    create_timestamp, validate_profile_data
+)
 
 class ProfileProcessor:
     """
     Profile data processor for LinkedIn profiles
     Handles data cleaning, normalization, and feature engineering
+    
+    Refactored to use centralized configuration and utility functions
     """
     
     def __init__(self):
         self.logger = logging.getLogger(__name__)
         
-        # Brazilian location patterns for enhanced detection
-        self.brazil_patterns = [
-            r'\bbrasil\b', r'\bbrazil\b', r'\bbr\b',
-            r'são paulo', r'rio de janeiro', r'belo horizonte',
-            r'salvador', r'fortaleza', r'brasília', r'curitiba',
-            r'recife', r'porto alegre', r'goiânia', r'belém',
-            r'guarulhos', r'campinas', r'nova iguaçu', r'maceió',
-            r'duque de caxias', r'natal', r'teresina', r'campo grande',
-            r'joão pessoa', r'são luís', r'aracaju', r'florianópolis',
-            r'vitória', r'macapá', r'rio branco', r'boa vista',
-            r'palmas', r'cuiabá', r'porto velho'
-        ]
+        # Load configuration data
+        self.brazil_patterns = LINKEDIN_CONFIG['brazil_patterns']
+        self.tech_categories = TECH_CATEGORIES
+        self.seniority_mapping = LINKEDIN_CONFIG['seniority_mapping']
         
-        # Technology skills categories for better matching
-        self.tech_categories = {
-            'programming_languages': [
-                'python', 'java', 'javascript', 'typescript', 'c++', 'c#',
-                'go', 'rust', 'kotlin', 'swift', 'php', 'ruby', 'scala',
-                'r', 'matlab', 'sql', 'html', 'css'
-            ],
-            'frameworks': [
-                'react', 'angular', 'vue', 'django', 'flask', 'spring',
-                'express', 'node.js', 'laravel', 'rails', 'asp.net',
-                'tensorflow', 'pytorch', 'keras', 'scikit-learn'
-            ],
-            'databases': [
-                'mysql', 'postgresql', 'mongodb', 'redis', 'elasticsearch',
-                'cassandra', 'dynamodb', 'oracle', 'sql server'
-            ],
-            'cloud_platforms': [
-                'aws', 'azure', 'gcp', 'google cloud', 'heroku',
-                'digitalocean', 'linode', 'alibaba cloud'
-            ],
-            'devops_tools': [
-                'docker', 'kubernetes', 'jenkins', 'gitlab', 'github',
-                'terraform', 'ansible', 'chef', 'puppet', 'vagrant'
-            ],
-            'blockchain': [
-                'blockchain', 'ethereum', 'bitcoin', 'solidity',
-                'hyperledger', 'smart contracts', 'web3', 'defi',
-                'nft', 'cryptocurrency', 'consensus', 'mining'
-            ]
+        # Experience level indicators (derived from seniority mapping)
+        self.experience_indicators = self._build_experience_indicators()
+    
+    def _build_experience_indicators(self) -> Dict[str, List[str]]:
+        """Build experience indicators from seniority mapping"""
+        indicators = {
+            'junior': [],
+            'mid': [],
+            'senior': [],
+            'management': [],
+            'executive': []
         }
         
-        # Experience level indicators
-        self.experience_indicators = {
-            'junior': ['junior', 'jr', 'trainee', 'intern', 'entry', 'associate', 'estagiário'],
-            'mid': ['pleno', 'mid', 'middle', 'intermediate', 'regular'],
-            'senior': ['senior', 'sr', 'sênior', 'principal', 'staff', 'lead'],
-            'management': ['manager', 'gerente', 'coordenador', 'supervisor', 'team lead'],
-            'executive': ['director', 'diretor', 'head', 'vp', 'cto', 'ceo', 'founder', 'president']
-        }
+        for keyword, level in self.seniority_mapping.items():
+            if level <= 1:
+                indicators['junior'].append(keyword)
+            elif level == 2:
+                indicators['mid'].append(keyword)
+            elif level == 3:
+                indicators['senior'].append(keyword)
+            elif level == 4:
+                indicators['management'].append(keyword)
+            else:
+                indicators['executive'].append(keyword)
+        
+        return indicators
     
     def clean_profile_data(self, profile: Dict) -> Dict:
         """
